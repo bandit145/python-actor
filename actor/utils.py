@@ -2,6 +2,7 @@ import uuid
 import pickle
 import os
 import subprocess
+import pathlib
 
 INFO_MSG = 1
 RCE_MSG = 2
@@ -12,11 +13,22 @@ ERR_MSG = 6
 LINK_MSG = 7
 
 
-def load_env():
-    global fifo_dir
-    global PID
-    fifo_dir = "/tmp/"
-    PID = uuid.uuid4()
+def load_env(pid=None):
+    import builtins
+
+    builtins.FIFO_DIR = "/tmp/actor"
+    builtins.MAILBOX = []
+    if not pid:
+        builtins.PID = uuid.uuid4()
+    else:
+        builtins.PID = pid
+    builtins.FIFO = create_pipe()
+
+
+def create_pipe():
+    fifo = pathlib.Path(f"{FIFO_DIR}/{PID}")
+    os.mkfifo(fifo)
+    return fifo
 
 
 def async_msg(pid, msg, **kwargs):
@@ -27,9 +39,7 @@ def async_msg(pid, msg, **kwargs):
             msg["kwargs"] = None
         if "args" not in msg.keys():
             msg["args"] = None
-    if "fifo_dir" in kwargs.keys():
-        fifo_dir = kwargs["fifo_dir"]
-    with open(f"/tmp/{pid}", "a") as fifo:
+    with open(f"{FIFO_DIR}/{pid}", "ab") as fifo:
         pickle.dump(msg, fifo)
 
 
@@ -41,20 +51,27 @@ def sync_msg(pid, msg, **kwargs):
             msg["kwargs"] = None
         if "args" not in msg.keys():
             msg["args"] = None
-    if "fifo_dir" in kwargs.keys():
-        fifo_dir = kwargs["fifo_dir"]
     # create a pipe to block for sync msg
-    r, w = os.pipe()
-    msg["r_pipe"] = w
-    with open(f"/tmp/{pid}", "a") as fifo:
+    with open(f"{FIFO_DIR}/{pid}", "wb") as fifo:
         pickle.dump(msg, fifo)
-    with open(r, "r") as r_pipe:
+    with FIFO.open(mode="rb") as r_pipe:
         data = pickle.load(r_pipe)
     return data
 
 
 def spawn(actor):
-    proc = subprocess.Popen(
-        ["python", "-m", "actor", "--actor", actor, "--pid", PID], stdin=subprocess.PIPE
+    n_pid = uuid.uuid4()
+    subprocess.Popen(
+        [
+            "python",
+            "-m",
+            "actor",
+            "--actor",
+            actor,
+            "--r_pid",
+            str(PID),
+            "--n_pid",
+            str(n_pid),
+        ]
     )
-    pass
+    return n_pid
