@@ -19,6 +19,7 @@ def load_env(pid=None):
 
     builtins.FIFO_DIR = "/tmp/actor"
     builtins.MAILBOX = []
+    builtins.msg = actor.system.objects.msg
     if not pid:
         builtins.PID = actor.system.objects.Pid(int=uuid.uuid4().int)
     else:
@@ -57,14 +58,15 @@ def sync_msg(pid, msg, **kwargs):
     # create a pipe to block for sync msg
     with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
         json.dump(msg, fifo)
-    with FIFO.open(mode="r") as r_pipe:
+    with FIFO.open(mode="rb") as r_pipe:
         data = json.load(r_pipe)
-    return data
+    data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
+    return actor.system.objects.msg(data)
 
 
-def spawn(actor_obj):
+def spawn(actor_obj, log_level="info"):
     n_pid = actor.system.objects.Pid(int=uuid.uuid4().int)
-    subprocess.Popen(
+    proc = subprocess.Popen(
         [
             "python",
             "-m",
@@ -75,6 +77,10 @@ def spawn(actor_obj):
             str(PID),
             "--n_pid",
             str(n_pid),
+            "--log_level",
+            log_level,
         ]
     )
+    while not os.path.exists(f"{FIFO_DIR}/{n_pid}"):
+        pass
     return n_pid

@@ -5,9 +5,7 @@ utils.load_env()
 
 def test_spawn():
     pid = utils.spawn("actor.actors.Actor")
-    data = utils.sync_msg(
-        pid, {"msg_type": utils.RCE_MSG, "method": "sync_msg"}
-    )
+    data = utils.sync_msg(pid, {"msg_type": utils.RCE_MSG, "method": "sync_msg"})
     assert data == {
         "msg_type": INFO_MSG,
         "data": "recieved",

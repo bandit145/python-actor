@@ -1,13 +1,15 @@
 import actor.utils as utils
 from actor.actors import Actor
-from actor.system.objects import Pid
+import actor.system.objects
 import os
 import pathlib
 import pickle
 import importlib
 import threading
 import traceback
+import json
 import atexit
+import logging
 
 
 # How to do we extract the state safely from a hung thread?
@@ -15,24 +17,27 @@ class Harness:
     links = []
     thread = None
     actor = None
+    logger = None
 
-    def __init__(self, pid):
+    def __init__(self, pid, log_level, log_file):
         # this is what we will use for our pids
         utils.load_env(pid)
+        # atexit.register(self.cleanup())
+        self.configure_logging(log_level, log_file)
+        self.logger.debug(f"HANDLER: {PID} started...")
         print(PID)
 
     def __loop__(self):
         with FIFO.open(mode="rb") as fifo:
             while True:
                 # if fifo.
-                print(MAILBOX)
-                data = fifo.read_text()
-                if data != '':
+                data = fifo.read()
+                if data != b"":
+                    self.logger.debug(f"HANDLER: recieved message {data}")
                     data = json.loads(data)
-                    if 'r_pid' in data.keys():
-                        data['r_pid'] = Pid(data['r_pid'])
-                    MAILBOX.append(data)
-
+                    data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
+                    MAILBOX.append(actor.system.objects.msg(data))
+                self.logger.debug(f"HANDLER: mailbox status {MAILBOX}")
                 # load data into list queue
                 if len(MAILBOX) > 0:
                     # if our one thread is not active then pop the oldest item out and try and use it
@@ -65,7 +70,10 @@ class Harness:
                             else:
                                 self.thread = threading.Thread(
                                     target=self.actor.info_msg,
-                                    args=(msg['r_pid'], msg,),
+                                    args=(
+                                        msg["r_pid"],
+                                        msg,
+                                    ),
                                 )
                                 self.thread.run()
                         case {"r_pid": _, "msg_type": utils.KILL_MSG}:
@@ -78,11 +86,20 @@ class Harness:
                         case _:
                             print("idk what this message is: ", data)
 
+    def configure_logging(self, log_level, log_file):
+        self.logger = logging.getLogger("harness_logger")
+        self.logger.setLevel(getattr(logging, log_level.upper()))
+        fh = logging.FileHandler(f"{log_file}/{PID}.log")
+        self.logger.addHandler(fh)
+
     def launch_actor(self, pkg, actor):
         self.actor = getattr(importlib.import_module(pkg), actor)()
+        self.logger.debug("HANDLER: Starting message processing loop.")
         while True:
             try:
                 self.__loop__()
 
             except Exception:
-                print(traceback.format_exc())
+                err = traceback.format_exc()
+                self.logger.error(f"HANDLER: \n{err}")
+                print(err)

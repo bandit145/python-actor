@@ -24,12 +24,14 @@ class Actor:
     def stop_msg(self, pid, msg):
         pass
 
+
 class EchoActor:
-    state = {'msg_cnt': 0}
+    state = {"msg_cnt": 0}
 
     def __entry_point__(self, msg):
-        getattr(self, msg['method'])(msg['r_pid'], msg)
-        async_msg(msg['r_pid'], msg)
+        getattr(self, msg["method"])(msg["r_pid"], msg)
+        msg > msg["r_pid"]
 
     def info_msg(self, pid, msg):
-        state['msg_cnt'] += 1
+        self.state["msg_cnt"] += 1
+        msg > msg["r_pid"]
