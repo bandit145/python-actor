@@ -9,6 +9,7 @@ import importlib
 import threading
 import traceback
 import json
+import copy
 import atexit
 import logging
 
@@ -24,7 +25,6 @@ class Harness:
     def __init__(self, pid, log_level, log_file):
         # this is what we will use for our pids
         utils.load_env(pid)
-        # atexit.register(self.cleanup())
         self.log_file = log_file
         self.configure_logging(log_level)
         self.logger.debug(f"HANDLER: {PID} started...")
@@ -57,9 +57,14 @@ class Harness:
                             if self.thread and self.thread.is_alive():
                                 self.__queue__.append()
                             else:
+                                #we cannot have this getting modified when we loop to another
+                                # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
+                                # but in theory if we cause a blocking operation then new messages are read in.
+
+                                #This would cause the old message to contain the reference to this one
                                 self.thread = threading.Thread(
                                     target=self.actor.__entry_point__,
-                                    args=(msg,),
+                                    args=(copy.deepcopy(msg),),
                                 )
                                 self.thread.start()
                         case {
@@ -75,12 +80,12 @@ class Harness:
                                     target=self.actor.info_msg,
                                     args=(
                                         msg["r_pid"],
-                                        msg,
+                                        copy.deepcopy(msg),
                                     ),
                                 )
                                 self.thread.start()
                         case {"r_pid": _, "msg_type": utils.KILL_MSG}:
-                            #actor.system.objects.msg(msg_type=utils.DEATH_MSG) > data['r_pid']
+                            actor.system.objects.msg(msg_type=utils.DEATH_MSG) > data['r_pid']
                             self.logger.debug(f"HANDLER: recieved kill msg from {data['r_pid']}. Going down!")
                             sys.exit(0)
                         case {"r_pid": _, "msg_type": utils.LINK_MSG}:
@@ -109,7 +114,6 @@ class Harness:
         while True:
             try:
                 self.__loop__()
-
             except Exception:
                 err = traceback.format_exc()
                 self.logger.error(f"HANDLER: \n{err}")

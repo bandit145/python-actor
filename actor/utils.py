@@ -16,7 +16,18 @@ ERR_MSG = 6
 LINK_MSG = 7
 
 def cleanup():
+    #create file to block any new messages being sent
+    with open(f"{FIFO_DIR}/{PID}.dwn", mode='w'):
+        pass
+    def purge():
+        with FIFO.open(mode='rb') as f:
+            _ = f.read()
+    # do a final read, purging the file of any latent messages that may be holding processes open
+    threading.Thread(target=purge, daemon=True).start()
+    print('what is wrong')
     os.remove(FIFO)
+    print('hello')
+    os.remove(f"{FIFO_DIR}/{PID}.dwn")
 
 def load_env(pid=None):
     import builtins
@@ -29,7 +40,7 @@ def load_env(pid=None):
     else:
         builtins.PID = pid
     builtins.FIFO = create_pipe()
-    #atexit.register(cleanup)
+    atexit.register(cleanup)
 
 
 def create_pipe():
@@ -39,13 +50,6 @@ def create_pipe():
     os.mkfifo(fifo)
     return fifo
 
-
-def __msg_send__(pid, msg):
-    with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
-        json.dump(msg, fifo)
-
-
-
 def async_msg(pid, msg, **kwargs):
     msg["r_pid"] = str(PID)
     msg["sync"] = False
@@ -54,14 +58,13 @@ def async_msg(pid, msg, **kwargs):
             msg["kwargs"] = None
         if "args" not in msg.keys():
             msg["args"] = None
-    # we make this a daemon to avoid situations when a pipe will not be read. In these situations the IO operation will prevent 
-    # you from going down which we do not want
-    t = threading.Thread(target=__msg_send__, args=(pid, msg,), daemon=True)
-    t.start()
-    return t
+    if not os.path.exists(f"{FIFO_DIR}/{pid}.dwn"):
+        with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
+            json.dump(msg, fifo)
+    
 
 def sync_msg(pid, msg, **kwargs):
-    _ = async_msg(pid, msg, **kwargs)
+    async_msg(pid, msg, **kwargs)
     with FIFO.open(mode="rb") as r_pipe:
         data = json.load(r_pipe)
     data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
