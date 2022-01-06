@@ -2,6 +2,7 @@ import actor.utils as utils
 from actor.actors import Actor
 import actor.system.objects
 import os
+import sys
 import pathlib
 import pickle
 import importlib
@@ -18,13 +19,16 @@ class Harness:
     thread = None
     actor = None
     logger = None
+    log_file = None
 
     def __init__(self, pid, log_level, log_file):
         # this is what we will use for our pids
         utils.load_env(pid)
         # atexit.register(self.cleanup())
-        self.configure_logging(log_level, log_file)
+        self.log_file = log_file
+        self.configure_logging(log_level)
         self.logger.debug(f"HANDLER: {PID} started...")
+        atexit.register(self.cleanup_actor)
         print(PID)
 
     def __loop__(self):
@@ -37,7 +41,6 @@ class Harness:
                     data = json.loads(data)
                     data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
                     MAILBOX.append(actor.system.objects.msg(data))
-                self.logger.debug(f"HANDLER: mailbox status {MAILBOX}")
                 # load data into list queue
                 if len(MAILBOX) > 0:
                     # if our one thread is not active then pop the oldest item out and try and use it
@@ -58,7 +61,7 @@ class Harness:
                                     target=self.actor.__entry_point__,
                                     args=(msg,),
                                 )
-                                self.thread.run()
+                                self.thread.start()
                         case {
                             "r_pid": _,
                             "msg_type": utils.INFO_MSG,
@@ -75,22 +78,30 @@ class Harness:
                                         msg,
                                     ),
                                 )
-                                self.thread.run()
+                                self.thread.start()
                         case {"r_pid": _, "msg_type": utils.KILL_MSG}:
-                            self.actor.utils.async_msg(
-                                data["r_pid"], {"msg_type": utils.DEATH_MSG}
-                            )
+                            #actor.system.objects.msg(msg_type=utils.DEATH_MSG) > data['r_pid']
+                            self.logger.debug(f"HANDLER: recieved kill msg from {data['r_pid']}. Going down!")
                             sys.exit(0)
                         case {"r_pid": _, "msg_type": utils.LINK_MSG}:
                             self.links.append(data["r_pid"])
                         case _:
                             print("idk what this message is: ", data)
 
-    def configure_logging(self, log_level, log_file):
+    def configure_logging(self, log_level):
         self.logger = logging.getLogger("harness_logger")
         self.logger.setLevel(getattr(logging, log_level.upper()))
-        fh = logging.FileHandler(f"{log_file}/{PID}.log")
+        fh = logging.FileHandler(f"{self.log_file}/{PID}.log")
         self.logger.addHandler(fh)
+
+    def cleanup_actor(self):
+        if os.path.exists(f"{self.log_file}/{PID}.log"):
+            os.remove(f"{self.log_file}/{PID}.log")
+        self.notify_of_death()
+
+    def notify_of_death(self):
+        for pid in self.links:
+            actor.system.objects.msg(msg_type=DEATH_MSG) > pid
 
     def launch_actor(self, pkg, actor):
         self.actor = getattr(importlib.import_module(pkg), actor)()

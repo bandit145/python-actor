@@ -13,7 +13,7 @@ class Actor:
         getattr(self, msg["method"])(msg["r_pid"], msg)
 
     def sync_msg(self, pid, msg):
-        async_msg(msg["r_pid"], {"msg_type": INFO_MSG, "data": "recieved"})
+        async_msg(msg["r_pid"], {"msg_type": INFO_MSG, "data": "received"})
 
     def async_msg(self, pid, msg):
         pass
@@ -34,4 +34,4 @@ class EchoActor:
 
     def info_msg(self, pid, msg):
         self.state["msg_cnt"] += 1
-        msg > msg["r_pid"]
+        msg > pid
