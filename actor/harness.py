@@ -108,6 +108,9 @@ class Harness:
                             PROC_LOGGER.debug(
                                 f"HANDLER: recieved kill msg from {msg['r_pid']}. Going down!"
                             )
+                            PROC_LOGGER.debug(
+                                f"HANDLER: Actor state at shutdown {self.actor.state}"
+                            )
                             sys.exit(0)
                         case {"r_pid": _, "msg_type": utils.LINK_MSG}:
                             PROC_LOGGER.debug(
