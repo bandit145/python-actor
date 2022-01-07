@@ -16,6 +16,7 @@ class Harness:
     links = []
     actor = None
     log_file = None
+    thread = None
 
     def __init__(self, pid):
         # this is what we will use for our pids
@@ -25,8 +26,8 @@ class Harness:
 
     def __loop__(self):
         with FIFO.open(mode="rb") as fifo:
-            # dangerous, could protentially block forever
-            threading.Thread(target=self.actor.start, daemon=True).start()
+            self.thread = threading.Thread(target=self.actor.start, daemon=True)
+            self.thread.start()
             while True:
                 # if fifo.
                 data = fifo.read()
@@ -49,45 +50,57 @@ class Harness:
                             # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
                             # but in theory if we cause a blocking operation then new messages are read in.
                             # This would cause the old message to contain the reference to this one
-                            threading.Thread(
-                                target=self.actor.msg,
-                                args=(
-                                    msg["r_pid"],
-                                    msg["sync"],
-                                    copy.deepcopy(msg["data"]),
-                                ),
-                                daemon=True,
-                            ).start()
+                            if not self.thread.is_alive():
+                                self.thread = threading.Thread(
+                                    target=self.actor.msg,
+                                    args=(
+                                        msg["r_pid"],
+                                        msg["sync"],
+                                        copy.deepcopy(msg["data"]),
+                                    ),
+                                    daemon=True,
+                                )
+                                self.thread.start()
+                            else:
+                                MAILBOX.append(msg)
                         case {
                             "r_pid": _,
                             "msg_type": utils.INFO_MSG,
                             "data": _,
                             "sync": _,
                         }:
-                            threading.Thread(
-                                target=self.actor.info_msg,
-                                args=(
-                                    msg["r_pid"],
-                                    msg["sync"],
-                                    copy.deepcopy(msg["data"]),
-                                ),
-                                daemon=True,
-                            ).start()
+                            if not self.thread.is_alive():
+                                self.thread = threading.Thread(
+                                    target=self.actor.info_msg,
+                                    args=(
+                                        msg["r_pid"],
+                                        msg["sync"],
+                                        copy.deepcopy(msg["data"]),
+                                    ),
+                                    daemon=True,
+                                )
+                                self.thread.start()
+                            else:
+                                MAILBOX.append(msg)
                         case {
                             "r_pid": _,
                             "msg_type": utils.ERROR_MSG,
                             "traceback": _,
                             "exception": _,
                         }:
-                            threading.Thread(
-                                target=self.actor.error_msg,
-                                args=(
-                                    msg["r_pid"],
-                                    msg["traceback"],
-                                    msg["exception"],
-                                ),
-                                daemon=True,
-                            ).start()
+                            if not self.thread.is_alive():
+                                self.thread = threading.Thread(
+                                    target=self.actor.error_msg,
+                                    args=(
+                                        msg["r_pid"],
+                                        msg["traceback"],
+                                        msg["exception"],
+                                    ),
+                                    daemon=True,
+                                )
+                                self.thread.start()
+                            else:
+                                MAILBOX.append(msg)
                         case {"r_pid": _, "msg_type": utils.KILL_MSG}:
                             actor.system.objects.msg(msg_type=utils.DEATH_MSG) > msg[
                                 "r_pid"

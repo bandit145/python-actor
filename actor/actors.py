@@ -28,8 +28,7 @@ class EchoActor(Actor):
     state = {"msg_cnt": 0}
 
     def start(self):
-        while True:
-            pass
+        print("test")
 
     def info_msg(self, pid, sync, data):
         self.state["msg_cnt"] += 1
