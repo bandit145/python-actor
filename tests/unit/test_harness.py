@@ -23,6 +23,5 @@ def test_link():
     pid = actor.utils.link("actor.actors.EchoActor", "debug")
     data = kill_msg() >> pid
     print(data)
-    raise Exception('wat')
     assert data['msg_type'] == actor.utils.DEATH_MSG
 

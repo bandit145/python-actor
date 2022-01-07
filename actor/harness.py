@@ -31,12 +31,16 @@ class Harness:
             while True:
                 # if fifo.
                 data = fifo.read()
-                if data != b"":
-                    PROC_LOGGER.debug(f"HANDLER: recieved message (raw) {data}")
-                    data = json.loads(data)
-                    data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
-                    PROC_LOGGER.debug(f"HANDLER: recieved message {data}")
-                    MAILBOX.append(actor.system.objects.msg(data))
+                PROC_LOGGER.debug(f"HANDLER: recieved message (raw) {data}")
+                for line in data.split(b'\n'):
+                    try:
+                        if line != b"":
+                            line = json.loads(line)
+                            line["r_pid"] = actor.system.objects.Pid(line["r_pid"])
+                            PROC_LOGGER.debug(f"HANDLER: received message {line}")
+                            MAILBOX.append(actor.system.objects.msg(line))
+                    except json.JSONDecodeError:
+                        PROC_LOGGER.error(f"HANDLER: could not decode {line}")
                 # load data into list queue
                 if len(MAILBOX) > 0:
                     # if our one thread is not active then pop the oldest item out and try and use it
@@ -117,7 +121,7 @@ class Harness:
                             PROC_LOGGER.debug(
                                 f"HANDLER: linking {msg['r_pid']} to process"
                             )
-                            self.links.append(data["r_pid"])
+                            self.links.append(msg["r_pid"])
                         case {"r_pid": _, "msg_type": utils.UNLINK_MSG}:
                             PROC_LOGGER.debug(
                                 f"HANDLER: unlinking {msg['r_pid']} from process"
@@ -141,7 +145,7 @@ class Harness:
 
     def notify_of_death(self):
         for pid in self.links:
-            actor.system.objects.msg(msg_type=DEATH_MSG) > pid
+            actor.system.objects.msg(msg_type=utils.DEATH_MSG) > pid
 
     def launch_actor(self, pkg, actor):
         self.actor = getattr(importlib.import_module(pkg), actor)()

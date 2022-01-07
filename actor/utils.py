@@ -86,7 +86,7 @@ def __send_msg__(pid, msg):
         f"{FIFO_DIR}/{pid}"
     ):
         with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
-            json.dump(msg, fifo)
+            fifo.write(f'{json.dumps(msg)}\n')
 
 
 def async_msg(pid, msg):
@@ -99,11 +99,15 @@ def sync_msg(pid, msg):
     msg["r_pid"] = str(PID)
     msg["sync"] = True
     __send_msg__(pid, msg)
+    #TODO, put this in the mailbox if it does not have a ref
     with FIFO.open(mode="rb") as r_pipe:
-        data = json.load(r_pipe)
-    data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
-    data["sync"] = bool(data["sync"])
-    return actor.system.objects.msg(data)
+        data = r_pipe.read()
+        for line in data.split(b'\n'):
+            if line != b"":
+                line = json.loads(line)
+                line["r_pid"] = actor.system.objects.Pid(line["r_pid"])
+                line["sync"] = bool(line["sync"])
+                return actor.system.objects.msg(line)
 
 
 def kill(pid):
