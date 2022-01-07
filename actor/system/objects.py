@@ -1,6 +1,14 @@
 from uuid import UUID
-from dataclasses import dataclass
 import actor.utils
+
+INFO_MSG = 1
+RCE_MSG = 2
+KILL_MSG = 3
+DEATH_MSG = 4
+UP_MSG = 5
+ERR_MSG = 6
+LINK_MSG = 7
+UNLINK_MSG = 8
 
 
 class Pid(UUID):

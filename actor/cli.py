@@ -3,6 +3,7 @@ import json
 import uuid
 from actor.harness import Harness
 import actor.system.objects
+from actor.utils import load_env
 
 
 def parse_args():
@@ -33,5 +34,6 @@ def main():
         pid = actor.system.objects.Pid(int=uuid.uuid4().int)
     else:
         pid = actor.system.objects.Pid(args.n_pid)
-    harness = Harness(pid, args.log_level, args.log_file)
+    load_env(pid, args.log_level, args.log_file)
+    harness = Harness(pid)
     harness.launch_actor(pkg, act)

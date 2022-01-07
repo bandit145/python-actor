@@ -1,43 +1,42 @@
 import actor.utils as utils
 from actor.actors import Actor
+import actor.system.exceptions
 import actor.system.objects
 import os
 import sys
-import pathlib
-import pickle
 import importlib
 import threading
 import traceback
 import json
 import copy
 import atexit
-import logging
-
 
 # How to do we extract the state safely from a hung thread?
 class Harness:
     links = []
-    thread = None
+    threads = []
     actor = None
-    logger = None
     log_file = None
 
-    def __init__(self, pid, log_level, log_file):
+    def __init__(self, pid):
         # this is what we will use for our pids
-        utils.load_env(pid)
-        self.log_file = log_file
-        self.configure_logging(log_level)
-        self.logger.debug(f"HANDLER: {PID} started...")
+        PROC_LOGGER.debug(f"HANDLER: {PID} started...")
         atexit.register(self.cleanup_actor)
         print(PID)
 
     def __loop__(self):
         with FIFO.open(mode="rb") as fifo:
+            # dangerous, could protentially block forever
+            t = threading.Thread(
+                target=self.actor.start
+            )
+            t.start()
+            self.threads.append(t)
             while True:
                 # if fifo.
                 data = fifo.read()
                 if data != b"":
-                    self.logger.debug(f"HANDLER: recieved message {data}")
+                    PROC_LOGGER.debug(f"HANDLER: recieved message {data}")
                     data = json.loads(data)
                     data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
                     MAILBOX.append(actor.system.objects.msg(data))
@@ -47,61 +46,63 @@ class Harness:
                     match msg := MAILBOX.pop(0):
                         case {
                             "r_pid": _,
-                            "msg_type": utils.RCE_MSG,
-                            "method": _,
-                            "kwargs": _,
-                            "args": _,
+                            "msg_type": utils.STD_MSG,
+                            "data": _,
                             "sync": _,
                         }:
-                            # actor.utils.async_msg(data['r_pid'], {'msg_type': actor.utils.INFO_MSG})
-                            if self.thread and self.thread.is_alive():
-                                self.__queue__.append()
-                            else:
-                                #we cannot have this getting modified when we loop to another
-                                # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
-                                # but in theory if we cause a blocking operation then new messages are read in.
-
-                                #This would cause the old message to contain the reference to this one
-                                self.thread = threading.Thread(
-                                    target=self.actor.__entry_point__,
-                                    args=(copy.deepcopy(msg),),
-                                )
-                                self.thread.start()
+                            #we cannot have this getting modified when we loop to another
+                            # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
+                            # but in theory if we cause a blocking operation then new messages are read in.
+                            #This would cause the old message to contain the reference to this one
+                            t = threading.Thread(
+                                target=getattr(self.actor, msg['']),
+                                args=(copy.deepcopy(msg),),
+                            )
+                            t.start()
+                            self.threads.append(t)
                         case {
                             "r_pid": _,
                             "msg_type": utils.INFO_MSG,
                             "data": _,
                             "sync": _,
                         }:
-                            if self.thread and self.thread.is_alive():
-                                self.__queue__.append()
-                            else:
-                                self.thread = threading.Thread(
-                                    target=self.actor.info_msg,
-                                    args=(
-                                        msg["r_pid"],
-                                        copy.deepcopy(msg),
-                                    ),
-                                )
-                                self.thread.start()
+                            t = threading.Thread(
+                                target=self.actor.info_msg,
+                                args=(msg['r_pid'], copy.deepcopy(msg),),
+                            )
+                            t.start()
+                            self.threads.append(t)
+                        case {
+                            "r_pid": _,
+                            "msg_type": utils.ERROR_MSG,
+                            "traceback": _,
+                            "exception": _
+                        }:
+                            t = threading.Thread(
+                                target=self.actor.error_msg,
+                                args=(msg['r_pid'], msg['traceback'], msg['exception'],),
+                            )
+                            t.start()
+                            self.threads.append(t)
                         case {"r_pid": _, "msg_type": utils.KILL_MSG}:
-                            actor.system.objects.msg(msg_type=utils.DEATH_MSG) > data['r_pid']
-                            self.logger.debug(f"HANDLER: recieved kill msg from {data['r_pid']}. Going down!")
+                            actor.system.objects.msg(msg_type=utils.DEATH_MSG) > msg['r_pid']
+                            PROC_LOGGER.debug(f"HANDLER: recieved kill msg from {msg['r_pid']}. Going down!")
                             sys.exit(0)
                         case {"r_pid": _, "msg_type": utils.LINK_MSG}:
+                            PROC_LOGGER.debug(f"HANDLER: linking {msg['r_pid']} to process")
                             self.links.append(data["r_pid"])
+                        case {"r_pid": _, "msg_type": utils.UNLINK_MSG}:
+                            PROC_LOGGER.debug(f"HANDLER: unlinking {msg['r_pid']} from process")
+                            self.links  = [link for links in self.links if link != msg["r_pid"]]
+                            PROC_LOGGER.debug(f"HANDLER: current links {self.links}")
+                        case {"r_pid": _}:
+                            PROC_LOGGER.debug(f"HANDLER: unkown message recieved. {msg}")
+                            actor.system.objects.msg(msg_type=util.ERR_MSG, )
                         case _:
-                            print("idk what this message is: ", data)
+                            PROC_LOGGER.debug(f"HANDLER: invalid message recieved. {msg}")
 
-    def configure_logging(self, log_level):
-        self.logger = logging.getLogger("harness_logger")
-        self.logger.setLevel(getattr(logging, log_level.upper()))
-        fh = logging.FileHandler(f"{self.log_file}/{PID}.log")
-        self.logger.addHandler(fh)
 
     def cleanup_actor(self):
-        if os.path.exists(f"{self.log_file}/{PID}.log"):
-            os.remove(f"{self.log_file}/{PID}.log")
         self.notify_of_death()
 
     def notify_of_death(self):
@@ -110,11 +111,11 @@ class Harness:
 
     def launch_actor(self, pkg, actor):
         self.actor = getattr(importlib.import_module(pkg), actor)()
-        self.logger.debug("HANDLER: Starting message processing loop.")
+        PROC_LOGGER.debug("HANDLER: Starting message processing loop.")
         while True:
             try:
                 self.__loop__()
             except Exception:
                 err = traceback.format_exc()
-                self.logger.error(f"HANDLER: \n{err}")
+                PROC_LOGGER.error(f"HANDLER: Exception occured\n{err}")
                 print(err)

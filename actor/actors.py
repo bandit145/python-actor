@@ -8,12 +8,11 @@ class Actor:
     def __init__(self):
         pass
 
-    def __entry_point__(self, msg):
-        print(msg)
-        getattr(self, msg["method"])(msg["r_pid"], msg)
+    def start(self):
+        pass
 
-    def sync_msg(self, pid, msg):
-        async_msg(msg["r_pid"], {"msg_type": INFO_MSG, "data": "received"})
+    def rce_msg(self, pid, msg):
+        pass
 
     def async_msg(self, pid, msg):
         pass
@@ -21,16 +20,15 @@ class Actor:
     def info_msg(self, pid, msg):
         pass
 
-    def stop_msg(self, pid, msg):
+    def error_msg(self, pid, traceback, exec):
+        pass
+
+    def kill_msg(self, pid):
         pass
 
 
-class EchoActor:
+class EchoActor(Actor):
     state = {"msg_cnt": 0}
-
-    def __entry_point__(self, msg):
-        getattr(self, msg["method"])(msg["r_pid"], msg)
-        msg > msg["r_pid"]
 
     def info_msg(self, pid, msg):
         self.state["msg_cnt"] += 1

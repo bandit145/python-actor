@@ -6,14 +6,16 @@ import pathlib
 import actor.system.objects
 import atexit
 import threading
+import logging
 
 INFO_MSG = 1
-RCE_MSG = 2
+STD_MSG = 2
 KILL_MSG = 3
 DEATH_MSG = 4
 UP_MSG = 5
 ERR_MSG = 6
 LINK_MSG = 7
+UNLINK_MSG = 8
 
 def cleanup():
     #create file to block any new messages being sent
@@ -24,12 +26,12 @@ def cleanup():
             _ = f.read()
     # do a final read, purging the file of any latent messages that may be holding processes open
     threading.Thread(target=purge, daemon=True).start()
-    print('what is wrong')
     os.remove(FIFO)
-    print('hello')
     os.remove(f"{FIFO_DIR}/{PID}.dwn")
+    if LOG_FILE and os.path.exists(f"{LOG_FILE}/{PID}.log"):
+            os.remove(f"{LOG_FILE}/{PID}.log")
 
-def load_env(pid=None):
+def load_env(pid=None, log_level='INFO', log_file=None):
     import builtins
 
     builtins.FIFO_DIR = "/tmp/actor"
@@ -40,7 +42,17 @@ def load_env(pid=None):
     else:
         builtins.PID = pid
     builtins.FIFO = create_pipe()
+    builtins.LOG_FILE = log_file
+    if log_file:
+        configure_logging(builtins, log_level, log_file)
     atexit.register(cleanup)
+
+def configure_logging(builtins, log_level, log_file):
+    builtins.PROC_LOGGER = logging.getLogger("process_logger")
+    builtins.PROC_LOGGER.setLevel(getattr(logging, log_level.upper()))
+    fh = logging.FileHandler(f"{LOG_FILE}/{PID}.log")
+    builtins.PROC_LOGGER.addHandler(fh)
+
 
 
 def create_pipe():
@@ -53,11 +65,6 @@ def create_pipe():
 def async_msg(pid, msg, **kwargs):
     msg["r_pid"] = str(PID)
     msg["sync"] = False
-    if msg["msg_type"] == RCE_MSG:
-        if "kwargs" not in msg.keys():
-            msg["kwargs"] = None
-        if "args" not in msg.keys():
-            msg["args"] = None
     if not os.path.exists(f"{FIFO_DIR}/{pid}.dwn"):
         with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
             json.dump(msg, fifo)
