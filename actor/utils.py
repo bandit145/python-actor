@@ -130,3 +130,8 @@ def spawn(actor_obj, log_level="info"):
     while not os.path.exists(f"{FIFO_DIR}/{n_pid}"):
         pass
     return n_pid
+
+def link(actor_obj, log_level='info'):
+    pid = spawn(actor_obj, log_level)
+    actor.system.objects.link_msg() > pid
+    return pid

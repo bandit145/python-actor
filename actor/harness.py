@@ -32,6 +32,7 @@ class Harness:
                 # if fifo.
                 data = fifo.read()
                 if data != b"":
+                    PROC_LOGGER.debug(f"HANDLER: recieved message (raw) {data}")
                     data = json.loads(data)
                     data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
                     PROC_LOGGER.debug(f"HANDLER: recieved message {data}")
@@ -102,7 +103,7 @@ class Harness:
                             else:
                                 MAILBOX.append(msg)
                         case {"r_pid": _, "msg_type": utils.KILL_MSG}:
-                            actor.system.objects.msg(msg_type=utils.DEATH_MSG) > msg[
+                            actor.system.objects.death_msg() > msg[
                                 "r_pid"
                             ]
                             PROC_LOGGER.debug(

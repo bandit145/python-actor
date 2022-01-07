@@ -18,3 +18,11 @@ def test_launch_harness():
     assert data == tst_msg
     # ssert harn.actor.state['count'] == 3
     actor.utils.kill(pid)
+
+def test_link():
+    pid = actor.utils.link("actor.actors.EchoActor", "debug")
+    data = kill_msg() >> pid
+    print(data)
+    raise Exception('wat')
+    assert data['msg_type'] == actor.utils.DEATH_MSG
+
