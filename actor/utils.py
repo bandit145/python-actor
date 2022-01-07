@@ -45,6 +45,14 @@ def load_env(pid=None, log_level="INFO", log_file=None):
     builtins.FIFO_DIR = "/tmp/actor"
     builtins.MAILBOX = []
     builtins.msg = actor.system.objects.msg
+    builtins.info_msg = actor.system.objects.info_msg
+    builtins.std_msg = actor.system.objects.std_msg
+    builtins.kill_msg = actor.system.objects.kill_msg
+    builtins.death_msg = actor.system.objects.death_msg
+    builtins.up_msg = actor.system.objects.up_msg
+    builtins.err_msg = actor.system.objects.err_msg
+    builtins.link_msg = actor.system.objects.link_msg
+    builtins.unlink_msg = actor.system.objects.unlink_msg
     if not pid:
         builtins.PID = actor.system.objects.Pid(int=uuid.uuid4().int)
     else:
