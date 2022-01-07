@@ -30,6 +30,10 @@ class Actor:
 class EchoActor(Actor):
     state = {"msg_cnt": 0}
 
+    def start(self):
+        while True:
+            pass
+
     def info_msg(self, pid, msg):
         self.state["msg_cnt"] += 1
         msg > pid
