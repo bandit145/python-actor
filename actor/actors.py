@@ -11,13 +11,10 @@ class Actor:
     def start(self):
         pass
 
-    def rce_msg(self, pid, msg):
+    def msg(self, pid, sync, data):
         pass
 
-    def async_msg(self, pid, msg):
-        pass
-
-    def info_msg(self, pid, msg):
+    def info_msg(self, pid, sync, data):
         pass
 
     def error_msg(self, pid, traceback, exec):
@@ -34,6 +31,7 @@ class EchoActor(Actor):
         while True:
             pass
 
-    def info_msg(self, pid, msg):
+    def info_msg(self, pid, sync, data):
         self.state["msg_cnt"] += 1
-        msg > pid
+        if sync:
+            msg(data=data, msg_type=INFO_MSG) > pid

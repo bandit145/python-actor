@@ -73,19 +73,26 @@ def create_pipe():
     return fifo
 
 
-def async_msg(pid, msg, **kwargs):
-    msg["r_pid"] = str(PID)
-    msg["sync"] = False
+def __send_msg__(pid, msg):
     if not os.path.exists(f"{FIFO_DIR}/{pid}.dwn"):
         with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
             json.dump(msg, fifo)
 
 
-def sync_msg(pid, msg, **kwargs):
-    async_msg(pid, msg, **kwargs)
+def async_msg(pid, msg):
+    msg["r_pid"] = str(PID)
+    msg["sync"] = False
+    __send_msg__(pid, msg)
+
+
+def sync_msg(pid, msg):
+    msg["r_pid"] = str(PID)
+    msg["sync"] = True
+    __send_msg__(pid, msg)
     with FIFO.open(mode="rb") as r_pipe:
         data = json.load(r_pipe)
     data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
+    data["sync"] = bool(data["sync"])
     return actor.system.objects.msg(data)
 
 

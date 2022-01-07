@@ -26,15 +26,14 @@ class Harness:
     def __loop__(self):
         with FIFO.open(mode="rb") as fifo:
             # dangerous, could protentially block forever
-            t = threading.Thread(target=self.actor.start, daemon=True)
-            t.start()
+            threading.Thread(target=self.actor.start, daemon=True).start()
             while True:
                 # if fifo.
                 data = fifo.read()
                 if data != b"":
-                    PROC_LOGGER.debug(f"HANDLER: recieved message {data}")
                     data = json.loads(data)
                     data["r_pid"] = actor.system.objects.Pid(data["r_pid"])
+                    PROC_LOGGER.debug(f"HANDLER: recieved message {data}")
                     MAILBOX.append(actor.system.objects.msg(data))
                 # load data into list queue
                 if len(MAILBOX) > 0:
@@ -50,34 +49,37 @@ class Harness:
                             # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
                             # but in theory if we cause a blocking operation then new messages are read in.
                             # This would cause the old message to contain the reference to this one
-                            t = threading.Thread(
-                                target=getattr(self.actor, msg[""]),
-                                args=(copy.deepcopy(msg),),
+                            threading.Thread(
+                                target=self.actor.msg,
+                                args=(
+                                    msg["r_pid"],
+                                    msg["sync"],
+                                    copy.deepcopy(msg["data"]),
+                                ),
                                 daemon=True,
-                            )
-                            t.start()
+                            ).start()
                         case {
                             "r_pid": _,
                             "msg_type": utils.INFO_MSG,
                             "data": _,
                             "sync": _,
                         }:
-                            t = threading.Thread(
+                            threading.Thread(
                                 target=self.actor.info_msg,
                                 args=(
                                     msg["r_pid"],
-                                    copy.deepcopy(msg),
+                                    msg["sync"],
+                                    copy.deepcopy(msg["data"]),
                                 ),
                                 daemon=True,
-                            )
-                            t.start()
+                            ).start()
                         case {
                             "r_pid": _,
                             "msg_type": utils.ERROR_MSG,
                             "traceback": _,
                             "exception": _,
                         }:
-                            t = threading.Thread(
+                            threading.Thread(
                                 target=self.actor.error_msg,
                                 args=(
                                     msg["r_pid"],
@@ -85,8 +87,7 @@ class Harness:
                                     msg["exception"],
                                 ),
                                 daemon=True,
-                            )
-                            t.start()
+                            ).start()
                         case {"r_pid": _, "msg_type": utils.KILL_MSG}:
                             actor.system.objects.msg(msg_type=utils.DEATH_MSG) > msg[
                                 "r_pid"
@@ -112,7 +113,7 @@ class Harness:
                             PROC_LOGGER.debug(
                                 f"HANDLER: unkown message recieved. {msg}"
                             )
-                            actor.system.objects.msg(msg_type=util.ERR_MSG)
+                            actor.system.objects.msg(msg_type=utils.ERR_MSG)
                         case _:
                             PROC_LOGGER.debug(
                                 f"HANDLER: invalid message recieved. {msg}"
