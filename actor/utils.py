@@ -74,7 +74,9 @@ def create_pipe():
 
 
 def __send_msg__(pid, msg):
-    if not os.path.exists(f"{FIFO_DIR}/{pid}.dwn"):
+    if not os.path.exists(f"{FIFO_DIR}/{pid}.dwn") and os.path.exists(
+        f"{FIFO_DIR}/{pid}"
+    ):
         with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
             json.dump(msg, fifo)
 
