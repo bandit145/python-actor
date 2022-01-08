@@ -2,14 +2,14 @@ from uuid import UUID
 import actor.utils
 from actor.system.exceptions import InvalidMessage
 
-INFO_MSG = 1
-STD_MSG = 2
-KILL_MSG = 3
-DEATH_MSG = 4
-UP_MSG = 5
-ERR_MSG = 6
-LINK_MSG = 7
-UNLINK_MSG = 8
+INFO_MSG = "info_msg"
+STD_MSG = "std_msg"
+KILL_MSG = "kill_msg"
+DEATH_MSG = "death_msg"
+UP_MSG = "up_msg"
+ERR_MSG = "err_msg"
+LINK_MSG = "link_msg"
+UNLINK_MSG = "unlink_msg"
 
 
 class Pid(UUID):
@@ -17,17 +17,23 @@ class Pid(UUID):
         return f"Pid('{self.__str__()}')"
 
 
+class Ref(UUID):
+    def __repr__(self):
+        return f"Ref('{self.__str__()}')"
+
+
 class msg(dict):
     __required_format__ = {}
 
     def __init__(self, *args, **kwargs):
         if self.__required_format__ != {}:
-            self.__required_format__["msg_type"] = int
-            if self.__required_format__.keys() != kwargs.keys():
-                raise InvalidMessage(
-                    f"Message missing one of required keys {list(self.__required_format__.keys())}"
-                )
+            self.__required_format__["msg_type"] = str
+            keys = kwargs.keys()
             for k, v in self.__required_format__.items():
+                if k not in keys:
+                    raise InvalidMessage(
+                        f"Message missing one of required keys {list(self.__required_format__.keys())}"
+                    )
                 if not isinstance(kwargs[k], v):
                     raise (
                         InvalidMessage(

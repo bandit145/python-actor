@@ -11,10 +11,10 @@ class Actor:
     def start(self):
         pass
 
-    def msg(self, pid, sync, data):
+    def msg(self, pid, ref, msg):
         pass
 
-    def info_msg(self, pid, sync, data):
+    def info_msg(self, pid, ref, msg):
         pass
 
     def error_msg(self, pid, traceback, exec):
@@ -30,7 +30,7 @@ class EchoActor(Actor):
     def start(self):
         print("test")
 
-    def info_msg(self, pid, sync, data):
+    def info_msg(self, pid, ref, msg):
         self.state["msg_cnt"] += 1
-        if sync:
-            msg(data=data, msg_type=INFO_MSG) > pid
+        if ref:
+            info_msg(data=msg["data"], ref=ref) > pid

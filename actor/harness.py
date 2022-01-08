@@ -25,31 +25,18 @@ class Harness:
         print(PID)
 
     def __loop__(self):
-        with FIFO.open(mode="rb") as fifo:
             self.thread = threading.Thread(target=self.actor.start, daemon=True)
             self.thread.start()
             while True:
-                # if fifo.
-                data = fifo.read()
-                PROC_LOGGER.debug(f"HANDLER: recieved message (raw) {data}")
-                for line in data.split(b'\n'):
-                    try:
-                        if line != b"":
-                            line = json.loads(line)
-                            line["r_pid"] = actor.system.objects.Pid(line["r_pid"])
-                            PROC_LOGGER.debug(f"HANDLER: received message {line}")
-                            MAILBOX.append(actor.system.objects.msg(line))
-                    except json.JSONDecodeError:
-                        PROC_LOGGER.error(f"HANDLER: could not decode {line}")
                 # load data into list queue
-                if len(MAILBOX) > 0:
+                if not MAILBOX.empty():
                     # if our one thread is not active then pop the oldest item out and try and use it
-                    match msg := MAILBOX.pop(0):
+                    match msg := MAILBOX.get():
                         case {
                             "r_pid": _,
-                            "msg_type": utils.STD_MSG,
+                            "msg_type": actor.system.objects.STD_MSG,
                             "data": _,
-                            "sync": _,
+                            "ref": _,
                         }:
                             # we cannot have this getting modified when we loop to another
                             # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
@@ -60,8 +47,8 @@ class Harness:
                                     target=self.actor.msg,
                                     args=(
                                         msg["r_pid"],
-                                        msg["sync"],
-                                        copy.deepcopy(msg["data"]),
+                                        msg["ref"],
+                                        copy.deepcopy(msg),
                                     ),
                                     daemon=True,
                                 )
@@ -70,17 +57,17 @@ class Harness:
                                 MAILBOX.append(msg)
                         case {
                             "r_pid": _,
-                            "msg_type": utils.INFO_MSG,
+                            "msg_type": actor.system.objects.INFO_MSG,
                             "data": _,
-                            "sync": _,
+                            "ref": _,
                         }:
                             if not self.thread.is_alive():
                                 self.thread = threading.Thread(
                                     target=self.actor.info_msg,
                                     args=(
                                         msg["r_pid"],
-                                        msg["sync"],
-                                        copy.deepcopy(msg["data"]),
+                                        msg["ref"],
+                                        copy.deepcopy(msg),
                                     ),
                                     daemon=True,
                                 )
@@ -89,7 +76,7 @@ class Harness:
                                 MAILBOX.append(msg)
                         case {
                             "r_pid": _,
-                            "msg_type": utils.ERROR_MSG,
+                            "msg_type": actor.system.objects.ERROR_MSG,
                             "traceback": _,
                             "exception": _,
                         }:
@@ -106,7 +93,7 @@ class Harness:
                                 self.thread.start()
                             else:
                                 MAILBOX.append(msg)
-                        case {"r_pid": _, "msg_type": utils.KILL_MSG}:
+                        case {"r_pid": _, "msg_type": actor.system.objects.KILL_MSG}:
                             actor.system.objects.death_msg() > msg[
                                 "r_pid"
                             ]
@@ -117,12 +104,13 @@ class Harness:
                                 f"HANDLER: Actor state at shutdown {self.actor.state}"
                             )
                             sys.exit(0)
-                        case {"r_pid": _, "msg_type": utils.LINK_MSG}:
+                        case {"r_pid": _, "msg_type": actor.system.objects.LINK_MSG}:
                             PROC_LOGGER.debug(
                                 f"HANDLER: linking {msg['r_pid']} to process"
                             )
-                            self.links.append(msg["r_pid"])
-                        case {"r_pid": _, "msg_type": utils.UNLINK_MSG}:
+                            if msg['r_pid'] not in self.links:
+                                self.links.append(msg["r_pid"])
+                        case {"r_pid": _, "msg_type": actor.system.objects.UNLINK_MSG}:
                             PROC_LOGGER.debug(
                                 f"HANDLER: unlinking {msg['r_pid']} from process"
                             )
@@ -134,7 +122,7 @@ class Harness:
                             PROC_LOGGER.debug(
                                 f"HANDLER: unkown message recieved. {msg}"
                             )
-                            actor.system.objects.msg(msg_type=utils.ERR_MSG)
+                            actor.system.objects.msg(msg_type=actor.system.objects.ERR_MSG)
                         case _:
                             PROC_LOGGER.debug(
                                 f"HANDLER: invalid message recieved. {msg}"
@@ -145,11 +133,10 @@ class Harness:
 
     def notify_of_death(self):
         for pid in self.links:
-            actor.system.objects.msg(msg_type=utils.DEATH_MSG) > pid
+            actor.system.objects.death_msg() > pid
 
     def launch_actor(self, pkg, actor):
         self.actor = getattr(importlib.import_module(pkg), actor)()
-        PROC_LOGGER.debug("HANDLER: Starting message processing loop.")
         while True:
             try:
                 self.__loop__()

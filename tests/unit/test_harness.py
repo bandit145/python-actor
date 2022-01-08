@@ -1,5 +1,6 @@
 from actor.harness import Harness
 import actor.utils
+import actor.system.objects
 import json
 import pathlib
 import time
@@ -9,19 +10,19 @@ actor.utils.load_env()
 
 def test_launch_harness():
     print(PID)
-    tst_msg = msg({"r_pid": str(PID), "msg_type": actor.utils.INFO_MSG, "data": {}})
+    tst_msg = info_msg(data={})
     pid = actor.utils.spawn("actor.actors.EchoActor", "debug")
     data = tst_msg >> pid
     print(data)
     tst_msg["r_pid"] = data["r_pid"]
-    tst_msg["sync"] = False
+    del data['ref']  
     assert data == tst_msg
     # ssert harn.actor.state['count'] == 3
-    actor.utils.kill(pid)
+    kill_msg() > pid
+
 
 def test_link():
     pid = actor.utils.link("actor.actors.EchoActor", "debug")
-    data = kill_msg() >> pid
-    print(data)
-    assert data['msg_type'] == actor.utils.DEATH_MSG
-
+    kill_msg() > pid
+    msg = MAILBOX.get(block=True)
+    assert msg["msg_type"] == actor.system.objects.DEATH_MSG

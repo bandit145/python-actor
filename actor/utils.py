@@ -7,15 +7,8 @@ import actor.system.objects
 import atexit
 import threading
 import logging
-
-INFO_MSG = 1
-STD_MSG = 2
-KILL_MSG = 3
-DEATH_MSG = 4
-UP_MSG = 5
-ERR_MSG = 6
-LINK_MSG = 7
-UNLINK_MSG = 8
+import queue
+import traceback
 
 
 def cleanup():
@@ -39,12 +32,39 @@ def cleanup():
         os.remove(f"{LOG_FILE}/{PID}.log")
 
 
-def load_env(pid=None, log_level="INFO", log_file=None):
+def recv_msg():
+    while True:
+        with FIFO.open(mode="rb") as fifo:
+            data = fifo.read()
+            for line in data.split(b"\n"):
+                try:
+                    if line != b"":
+                        PROC_LOGGER.debug(
+                            f"MSG PROCESSING LOOP: recieved message (raw) {data}"
+                        )
+                        line = json.loads(line)
+                        line["r_pid"] = actor.system.objects.Pid(line["r_pid"])
+                        if line['ref']:
+                            line['ref'] = actor.system.objects.Ref(line['ref'])
+                        PROC_LOGGER.debug(
+                            f"MSG PROCESSING LOOP: received message {line}"
+                        )
+                        MAILBOX.put(
+                            getattr(actor.system.objects, line["msg_type"])(**line)
+                        )
+                except json.JSONDecodeError:
+                    PROC_LOGGER.error(f"MSG PROCESSING LOOP: could not decode {line}")
+                except Exception:
+                    PROC_LOGGER.error(
+                        f"MSG PROCESSING LOOP: unkown message proceesing issue occured\n {traceback.format_exc()}"
+                    )
+
+
+def load_env(pid=None, log_level="INFO", log_file="/var/log/pyactor"):
     import builtins
 
     builtins.FIFO_DIR = "/tmp/actor"
-    builtins.MAILBOX = []
-    builtins.msg = actor.system.objects.msg
+    builtins.MAILBOX = queue.Queue()
     builtins.info_msg = actor.system.objects.info_msg
     builtins.std_msg = actor.system.objects.std_msg
     builtins.kill_msg = actor.system.objects.kill_msg
@@ -59,8 +79,9 @@ def load_env(pid=None, log_level="INFO", log_file=None):
         builtins.PID = pid
     builtins.FIFO = create_pipe()
     builtins.LOG_FILE = log_file
-    if log_file:
-        configure_logging(builtins, log_level, log_file)
+    configure_logging(builtins, log_level, log_file)
+    builtins.RECV_MSG_THREAD = threading.Thread(target=recv_msg, daemon=True)
+    builtins.RECV_MSG_THREAD.start()
     atexit.register(cleanup)
 
 
@@ -86,32 +107,29 @@ def __send_msg__(pid, msg):
         f"{FIFO_DIR}/{pid}"
     ):
         with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
-            fifo.write(f'{json.dumps(msg)}\n')
+            fifo.write(f"{json.dumps(msg)}\n")
 
 
 def async_msg(pid, msg):
     msg["r_pid"] = str(PID)
-    msg["sync"] = False
+    if "ref" not in msg.keys():    
+        msg["ref"] = None
     __send_msg__(pid, msg)
 
 
 def sync_msg(pid, msg):
     msg["r_pid"] = str(PID)
-    msg["sync"] = True
+    msg["ref"] = str(actor.system.objects.Ref(int=uuid.uuid4().int))
     __send_msg__(pid, msg)
-    #TODO, put this in the mailbox if it does not have a ref
-    with FIFO.open(mode="rb") as r_pipe:
-        data = r_pipe.read()
-        for line in data.split(b'\n'):
-            if line != b"":
-                line = json.loads(line)
-                line["r_pid"] = actor.system.objects.Pid(line["r_pid"])
-                line["sync"] = bool(line["sync"])
-                return actor.system.objects.msg(line)
-
-
-def kill(pid):
-    async_msg(pid, actor.system.objects.msg(msg_type=KILL_MSG, r_pid=PID))
+    # TODO, put this in the mailbox if it does not have a ref
+    while True:
+        if not MAILBOX.empty():
+            r_msg = MAILBOX.get()
+            if "ref" in r_msg.keys():
+                r_msg = actor.system.objects.Ref(r_msg["ref"])
+                if msg["ref"] == r_msg["ref"]:
+                    return r_msg
+            MAILBOX.put(r_msg)
 
 
 def spawn(actor_obj, log_level="info"):
@@ -135,7 +153,8 @@ def spawn(actor_obj, log_level="info"):
         pass
     return n_pid
 
-def link(actor_obj, log_level='info'):
+
+def link(actor_obj, log_level="info"):
     pid = spawn(actor_obj, log_level)
     actor.system.objects.link_msg() > pid
     return pid
