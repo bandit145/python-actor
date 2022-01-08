@@ -33,8 +33,8 @@ def cleanup():
 
 
 def recv_msg():
-    while True:
-        with FIFO.open(mode="rb") as fifo:
+    with FIFO.open(mode="rb") as fifo:
+        while True:
             data = fifo.read()
             for line in data.split(b"\n"):
                 try:
@@ -44,8 +44,8 @@ def recv_msg():
                         )
                         line = json.loads(line)
                         line["r_pid"] = actor.system.objects.Pid(line["r_pid"])
-                        if line['ref']:
-                            line['ref'] = actor.system.objects.Ref(line['ref'])
+                        if line["ref"]:
+                            line["ref"] = actor.system.objects.Ref(line["ref"])
                         PROC_LOGGER.debug(
                             f"MSG PROCESSING LOOP: received message {line}"
                         )
@@ -112,22 +112,25 @@ def __send_msg__(pid, msg):
 
 def async_msg(pid, msg):
     msg["r_pid"] = str(PID)
-    if "ref" not in msg.keys():    
+    if "ref" not in msg.keys():
         msg["ref"] = None
+    else:
+        msg["ref"] = str(msg["ref"])
     __send_msg__(pid, msg)
 
 
 def sync_msg(pid, msg):
     msg["r_pid"] = str(PID)
-    msg["ref"] = str(actor.system.objects.Ref(int=uuid.uuid4().int))
+    ref = actor.system.objects.Ref(int=uuid.uuid4().int)
+    msg["ref"] = str(ref)
     __send_msg__(pid, msg)
     # TODO, put this in the mailbox if it does not have a ref
     while True:
         if not MAILBOX.empty():
             r_msg = MAILBOX.get()
             if "ref" in r_msg.keys():
-                r_msg = actor.system.objects.Ref(r_msg["ref"])
-                if msg["ref"] == r_msg["ref"]:
+                print(msg["ref"],':',r_msg["ref"])
+                if ref == r_msg["ref"]:
                     return r_msg
             MAILBOX.put(r_msg)
 

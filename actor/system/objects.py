@@ -1,6 +1,7 @@
 from uuid import UUID
 import actor.utils
 from actor.system.exceptions import InvalidMessage
+import copy
 
 INFO_MSG = "info_msg"
 STD_MSG = "std_msg"
@@ -43,10 +44,10 @@ class msg(dict):
         super().__init__(*args, **kwargs)
 
     def __gt__(self, pid):
-        actor.utils.async_msg(pid, self)
+        actor.utils.async_msg(pid, copy.deepcopy(self))
 
     def __rshift__(self, pid):
-        return actor.utils.sync_msg(pid, self)
+        return actor.utils.sync_msg(pid, copy.deepcopy(self))
 
 
 class info_msg(msg):

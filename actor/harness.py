@@ -25,108 +25,100 @@ class Harness:
         print(PID)
 
     def __loop__(self):
-            self.thread = threading.Thread(target=self.actor.start, daemon=True)
-            self.thread.start()
-            while True:
-                # load data into list queue
-                if not MAILBOX.empty():
-                    # if our one thread is not active then pop the oldest item out and try and use it
-                    match msg := MAILBOX.get():
-                        case {
-                            "r_pid": _,
-                            "msg_type": actor.system.objects.STD_MSG,
-                            "data": _,
-                            "ref": _,
-                        }:
-                            # we cannot have this getting modified when we loop to another
-                            # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
-                            # but in theory if we cause a blocking operation then new messages are read in.
-                            # This would cause the old message to contain the reference to this one
-                            if not self.thread.is_alive():
-                                self.thread = threading.Thread(
-                                    target=self.actor.msg,
-                                    args=(
-                                        msg["r_pid"],
-                                        msg["ref"],
-                                        copy.deepcopy(msg),
-                                    ),
-                                    daemon=True,
-                                )
-                                self.thread.start()
-                            else:
-                                MAILBOX.append(msg)
-                        case {
-                            "r_pid": _,
-                            "msg_type": actor.system.objects.INFO_MSG,
-                            "data": _,
-                            "ref": _,
-                        }:
-                            if not self.thread.is_alive():
-                                self.thread = threading.Thread(
-                                    target=self.actor.info_msg,
-                                    args=(
-                                        msg["r_pid"],
-                                        msg["ref"],
-                                        copy.deepcopy(msg),
-                                    ),
-                                    daemon=True,
-                                )
-                                self.thread.start()
-                            else:
-                                MAILBOX.append(msg)
-                        case {
-                            "r_pid": _,
-                            "msg_type": actor.system.objects.ERROR_MSG,
-                            "traceback": _,
-                            "exception": _,
-                        }:
-                            if not self.thread.is_alive():
-                                self.thread = threading.Thread(
-                                    target=self.actor.error_msg,
-                                    args=(
-                                        msg["r_pid"],
-                                        msg["traceback"],
-                                        msg["exception"],
-                                    ),
-                                    daemon=True,
-                                )
-                                self.thread.start()
-                            else:
-                                MAILBOX.append(msg)
-                        case {"r_pid": _, "msg_type": actor.system.objects.KILL_MSG}:
-                            actor.system.objects.death_msg() > msg[
-                                "r_pid"
-                            ]
-                            PROC_LOGGER.debug(
-                                f"HANDLER: recieved kill msg from {msg['r_pid']}. Going down!"
+        self.thread = threading.Thread(target=self.actor.start, daemon=True)
+        self.thread.start()
+        while True:
+            # load data into list queue
+            if not MAILBOX.empty():
+                # if our one thread is not active then pop the oldest item out and try and use it
+                match msg := MAILBOX.get():
+                    case {
+                        "r_pid": _,
+                        "msg_type": actor.system.objects.STD_MSG,
+                        "data": _,
+                        "ref": _,
+                    }:
+                        # we cannot have this getting modified when we loop to another
+                        # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
+                        # but in theory if we cause a blocking operation then new messages are read in.
+                        # This would cause the old message to contain the reference to this one
+                        if not self.thread.is_alive():
+                            self.thread = threading.Thread(
+                                target=self.actor.msg,
+                                args=(
+                                    msg["r_pid"],
+                                    msg["ref"],
+                                    copy.deepcopy(msg),
+                                ),
+                                daemon=True,
                             )
-                            PROC_LOGGER.debug(
-                                f"HANDLER: Actor state at shutdown {self.actor.state}"
+                            self.thread.start()
+                        else:
+                            MAILBOX.append(msg)
+                    case {
+                        "r_pid": _,
+                        "msg_type": actor.system.objects.INFO_MSG,
+                        "data": _,
+                        "ref": _,
+                    }:
+                        if not self.thread.is_alive():
+                            self.thread = threading.Thread(
+                                target=self.actor.info_msg,
+                                args=(
+                                    msg["r_pid"],
+                                    msg["ref"],
+                                    copy.deepcopy(msg),
+                                ),
+                                daemon=True,
                             )
-                            sys.exit(0)
-                        case {"r_pid": _, "msg_type": actor.system.objects.LINK_MSG}:
-                            PROC_LOGGER.debug(
-                                f"HANDLER: linking {msg['r_pid']} to process"
+                            self.thread.start()
+                        else:
+                            MAILBOX.append(msg)
+                    case {
+                        "r_pid": _,
+                        "msg_type": actor.system.objects.ERROR_MSG,
+                        "traceback": _,
+                        "exception": _,
+                    }:
+                        if not self.thread.is_alive():
+                            self.thread = threading.Thread(
+                                target=self.actor.error_msg,
+                                args=(
+                                    msg["r_pid"],
+                                    msg["traceback"],
+                                    msg["exception"],
+                                ),
+                                daemon=True,
                             )
-                            if msg['r_pid'] not in self.links:
-                                self.links.append(msg["r_pid"])
-                        case {"r_pid": _, "msg_type": actor.system.objects.UNLINK_MSG}:
-                            PROC_LOGGER.debug(
-                                f"HANDLER: unlinking {msg['r_pid']} from process"
-                            )
-                            self.links = [
-                                link for links in self.links if link != msg["r_pid"]
-                            ]
-                            PROC_LOGGER.debug(f"HANDLER: current links {self.links}")
-                        case {"r_pid": _}:
-                            PROC_LOGGER.debug(
-                                f"HANDLER: unkown message recieved. {msg}"
-                            )
-                            actor.system.objects.msg(msg_type=actor.system.objects.ERR_MSG)
-                        case _:
-                            PROC_LOGGER.debug(
-                                f"HANDLER: invalid message recieved. {msg}"
-                            )
+                            self.thread.start()
+                        else:
+                            MAILBOX.append(msg)
+                    case {"r_pid": _, "msg_type": actor.system.objects.KILL_MSG}:
+                        actor.system.objects.death_msg() > msg["r_pid"]
+                        PROC_LOGGER.debug(
+                            f"HANDLER: recieved kill msg from {msg['r_pid']}. Going down!"
+                        )
+                        PROC_LOGGER.debug(
+                            f"HANDLER: Actor state at shutdown {self.actor.state}"
+                        )
+                        sys.exit(0)
+                    case {"r_pid": _, "msg_type": actor.system.objects.LINK_MSG}:
+                        PROC_LOGGER.debug(f"HANDLER: linking {msg['r_pid']} to process")
+                        if msg["r_pid"] not in self.links:
+                            self.links.append(msg["r_pid"])
+                    case {"r_pid": _, "msg_type": actor.system.objects.UNLINK_MSG}:
+                        PROC_LOGGER.debug(
+                            f"HANDLER: unlinking {msg['r_pid']} from process"
+                        )
+                        self.links = [
+                            link for links in self.links if link != msg["r_pid"]
+                        ]
+                        PROC_LOGGER.debug(f"HANDLER: current links {self.links}")
+                    case {"r_pid": _}:
+                        PROC_LOGGER.debug(f"HANDLER: unkown message recieved. {msg}")
+                        actor.system.objects.msg(msg_type=actor.system.objects.ERR_MSG)
+                    case _:
+                        PROC_LOGGER.debug(f"HANDLER: invalid message recieved. {msg}")
 
     def cleanup(self):
         self.notify_of_death()
