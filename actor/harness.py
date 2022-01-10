@@ -32,69 +32,7 @@ class Harness:
             if not MAILBOX.empty():
                 # if our one thread is not active then pop the oldest item out and try and use it
                 match msg := MAILBOX.get():
-                    case {
-                        "r_pid": _,
-                        "msg_type": actor.system.objects.STD_MSG,
-                        "data": _,
-                        "ref": _,
-                    }:
-                        # we cannot have this getting modified when we loop to another
-                        # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
-                        # but in theory if we cause a blocking operation then new messages are read in.
-                        # This would cause the old message to contain the reference to this one
-                        if not self.thread.is_alive():
-                            self.thread = threading.Thread(
-                                target=self.actor.msg,
-                                args=(
-                                    msg["r_pid"],
-                                    msg["ref"],
-                                    copy.deepcopy(msg),
-                                ),
-                                daemon=True,
-                            )
-                            self.thread.start()
-                        else:
-                            MAILBOX.append(msg)
-                    case {
-                        "r_pid": _,
-                        "msg_type": actor.system.objects.INFO_MSG,
-                        "data": _,
-                        "ref": _,
-                    }:
-                        if not self.thread.is_alive():
-                            self.thread = threading.Thread(
-                                target=self.actor.info_msg,
-                                args=(
-                                    msg["r_pid"],
-                                    msg["ref"],
-                                    copy.deepcopy(msg),
-                                ),
-                                daemon=True,
-                            )
-                            self.thread.start()
-                        else:
-                            MAILBOX.append(msg)
-                    case {
-                        "r_pid": _,
-                        "msg_type": actor.system.objects.ERROR_MSG,
-                        "traceback": _,
-                        "exception": _,
-                    }:
-                        if not self.thread.is_alive():
-                            self.thread = threading.Thread(
-                                target=self.actor.error_msg,
-                                args=(
-                                    msg["r_pid"],
-                                    msg["traceback"],
-                                    msg["exception"],
-                                ),
-                                daemon=True,
-                            )
-                            self.thread.start()
-                        else:
-                            MAILBOX.append(msg)
                     case {"r_pid": _, "msg_type": actor.system.objects.KILL_MSG}:
-                        actor.system.objects.death_msg() > msg["r_pid"]
                         PROC_LOGGER.debug(
                             f"HANDLER: recieved kill msg from {msg['r_pid']}. Going down!"
                         )
@@ -114,8 +52,29 @@ class Harness:
                             link for links in self.links if link != msg["r_pid"]
                         ]
                         PROC_LOGGER.debug(f"HANDLER: current links {self.links}")
+                    case {
+                        "r_pid": _,
+                        "msg_type": _,
+                        "data": _,
+                        "ref": _,
+                    }:
+                        # we cannot have this getting modified when we loop to another
+                        # message. This might not be needed as TECHNICALLY only one bit of python code is running at a time
+                        # but in theory if we cause a blocking operation then new messages are read in.
+                        # This would cause the old message to contain the reference to this one
+                        if not self.thread.is_alive():
+                            self.thread = threading.Thread(
+                                target=self.actor.__entrypoint__,
+                                args=(
+                                    copy.deepcopy(msg),
+                                ),
+                                daemon=True,
+                            )
+                            self.thread.start()
+                        else:
+                            MAILBOX.append(msg)
                     case {"r_pid": _}:
-                        PROC_LOGGER.debug(f"HANDLER: unkown message recieved. {msg}")
+                        PROC_LOGGER.debug(f"HANDLER: unknown message received. {msg}")
                         actor.system.objects.msg(msg_type=actor.system.objects.ERR_MSG)
                     case _:
                         PROC_LOGGER.debug(f"HANDLER: invalid message recieved. {msg}")

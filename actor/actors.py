@@ -1,5 +1,6 @@
 from actor.utils import *
-
+import copy
+import traceback
 
 class Actor:
 
@@ -7,6 +8,29 @@ class Actor:
 
     def __init__(self):
         pass
+
+    def __entrypoint__(self, msg):
+        try:
+            match msg:
+                case {
+                    "msg_type": actor.system.objects.STD_MSG,
+                }:
+                    self.msg(msg['r_pid'], msg['ref'], msg)
+                case {
+                    "msg_type": actor.system.objects.INFO_MSG
+                }:
+                    self.info_msg(msg['r_pid'], msg['ref'], msg)
+                case {
+                    "msg_type": actor.system.objects.ERR_MSG
+                }:
+                    self.error_msg(msg['r_pid'], msg['ref'], msg)
+                case {
+                    "msg_type": actor.system.objects.KILL_MSG
+                }:
+                    self.kill_msg(msg['r_pid'])
+
+        except Exception:
+            PROC_LOGGER.debug(f"UNCAUGHT ACTOR ERROR:\n{traceback.format_exc()}")
 
     def start(self):
         pass
@@ -34,3 +58,12 @@ class EchoActor(Actor):
         self.state["msg_cnt"] += 1
         if ref:
             info_msg(data=msg["data"], ref=ref) > pid
+
+class SpamActor(Actor):
+    state = {'msg_cnt': 500}
+
+    def msg(self, pid, ref, msg):
+        if 'begin' in msg['data'].keys():
+            while self.state['msg_cnt'] > 0:
+                std_msg(data={'spam_msg': True}) > pid
+                self.state['msg_cnt'] -= 1

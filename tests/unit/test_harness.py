@@ -26,3 +26,4 @@ def test_link():
     kill_msg() > pid
     msg = MAILBOX.get(block=True)
     assert msg["msg_type"] == actor.system.objects.DEATH_MSG
+    assert MAILBOX.empty()

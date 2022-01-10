@@ -62,27 +62,27 @@ def recv_msg():
 
 def load_env(pid=None, log_level="INFO", log_file="/var/log/pyactor"):
     import builtins
-
-    builtins.FIFO_DIR = "/tmp/actor"
-    builtins.MAILBOX = queue.Queue()
-    builtins.info_msg = actor.system.objects.info_msg
-    builtins.std_msg = actor.system.objects.std_msg
-    builtins.kill_msg = actor.system.objects.kill_msg
-    builtins.death_msg = actor.system.objects.death_msg
-    builtins.up_msg = actor.system.objects.up_msg
-    builtins.err_msg = actor.system.objects.err_msg
-    builtins.link_msg = actor.system.objects.link_msg
-    builtins.unlink_msg = actor.system.objects.unlink_msg
-    if not pid:
-        builtins.PID = actor.system.objects.Pid(int=uuid.uuid4().int)
-    else:
-        builtins.PID = pid
-    builtins.FIFO = create_pipe()
-    builtins.LOG_FILE = log_file
-    configure_logging(builtins, log_level, log_file)
-    builtins.RECV_MSG_THREAD = threading.Thread(target=recv_msg, daemon=True)
-    builtins.RECV_MSG_THREAD.start()
-    atexit.register(cleanup)
+    if not hasattr(builtins, 'FIFO_DIR'):
+        builtins.FIFO_DIR = "/tmp/actor"
+        builtins.MAILBOX = queue.Queue()
+        builtins.info_msg = actor.system.objects.info_msg
+        builtins.std_msg = actor.system.objects.std_msg
+        builtins.kill_msg = actor.system.objects.kill_msg
+        builtins.death_msg = actor.system.objects.death_msg
+        builtins.up_msg = actor.system.objects.up_msg
+        builtins.err_msg = actor.system.objects.err_msg
+        builtins.link_msg = actor.system.objects.link_msg
+        builtins.unlink_msg = actor.system.objects.unlink_msg
+        if not pid:
+            builtins.PID = actor.system.objects.Pid(int=uuid.uuid4().int)
+        else:
+            builtins.PID = pid
+        builtins.FIFO = create_pipe()
+        builtins.LOG_FILE = log_file
+        configure_logging(builtins, log_level, log_file)
+        builtins.RECV_MSG_THREAD = threading.Thread(target=recv_msg, daemon=True)
+        builtins.RECV_MSG_THREAD.start()
+        atexit.register(cleanup)
 
 
 def configure_logging(builtins, log_level, log_file):
@@ -154,6 +154,7 @@ def spawn(actor_obj, log_level="info"):
     )
     while not os.path.exists(f"{FIFO_DIR}/{n_pid}"):
         pass
+    PROC_LOGGER.debug(f"SPAWN: {PID} spawned {n_pid}")
     return n_pid
 
 
