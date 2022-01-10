@@ -35,6 +35,9 @@ class Actor:
     def msg(self, pid, ref, msg):
         pass
 
+    def reload(self, pid):
+        pass
+
     def info_msg(self, pid, ref, msg):
         pass
 

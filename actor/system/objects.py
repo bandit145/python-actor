@@ -11,6 +11,7 @@ UP_MSG = "up_msg"
 ERR_MSG = "err_msg"
 LINK_MSG = "link_msg"
 UNLINK_MSG = "unlink_msg"
+RELOAD_MSG = "reload_msg"
 
 
 class Pid(UUID):
@@ -101,4 +102,9 @@ class link_msg(msg):
 class unlink_msg(msg):
     def __init__(self, **kwargs):
         kwargs["msg_type"] = UNLINK_MSG
+        super().__init__(**kwargs)
+
+class reload_msg(msg):
+    def __init__(self, **kwargs):
+        kwargs["msg_type"] = RELOAD_MSG
         super().__init__(**kwargs)

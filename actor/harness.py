@@ -17,6 +17,7 @@ class Harness:
     actor = None
     log_file = None
     thread = None
+    module = None
 
     def __init__(self, pid):
         # this is what we will use for our pids
@@ -54,6 +55,17 @@ class Harness:
                         PROC_LOGGER.debug(f"HANDLER: current links {self.links}")
                     case {
                         "r_pid": _,
+                        "msg_type": actor.system.objects.RELOAD_MSG
+                    }:
+                        if not self.thread.is_alive():
+                            self.actor.reload(msg['r_pid'])
+                            self.module = importlib.reload(self.module)
+                            self.actor = getattr(self.module, str(type(self.actor)))
+                        else:
+                            MAILBOX.append(msg)
+
+                    case {
+                        "r_pid": _,
                         "msg_type": _,
                         "data": _,
                         "ref": _,
@@ -85,7 +97,8 @@ class Harness:
             actor.system.objects.death_msg() > pid
 
     def launch_actor(self, pkg, actor):
-        self.actor = getattr(importlib.import_module(pkg), actor)()
+        self.module = importlib.import_module(pkg)
+        self.actor = getattr(self.module, actor)()
         while True:
             try:
                 self.__loop__()
