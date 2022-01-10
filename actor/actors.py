@@ -23,9 +23,11 @@ class Actor:
                     self.error_msg(msg["r_pid"], msg["ref"], msg)
                 case {"msg_type": actor.system.objects.KILL_MSG}:
                     self.kill_msg(msg["r_pid"])
+                case _:
+                    PROC_LOGGER.debug(f"ACTOR: unrecognized msg type {msg}")
 
         except Exception:
-            PROC_LOGGER.debug(f"UNCAUGHT ACTOR ERROR:\n{traceback.format_exc()}")
+            PROC_LOGGER.debug(f"ACTOR: UNCAUGHT ERROR:\n{traceback.format_exc()}")
 
     def start(self):
         pass
