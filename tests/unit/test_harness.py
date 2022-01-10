@@ -13,10 +13,10 @@ def test_launch_harness():
     tst_msg = info_msg(data={})
     pid = actor.utils.spawn("actor.actors.EchoActor", "debug")
     data = tst_msg >> pid
-    #del data["ref"]
-    assert PID != data['r_pid']
-    assert tst_msg['msg_type'] == actor.system.objects.INFO_MSG
-    assert tst_msg['data'] == {}
+    # del data["ref"]
+    assert PID != data["r_pid"]
+    assert tst_msg["msg_type"] == actor.system.objects.INFO_MSG
+    assert tst_msg["data"] == {}
     # ssert harn.actor.state['count'] == 3
     kill_msg() > pid
 

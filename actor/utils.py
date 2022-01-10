@@ -62,7 +62,8 @@ def recv_msg():
 
 def load_env(pid=None, log_level="INFO", log_file="/var/log/pyactor"):
     import builtins
-    if not hasattr(builtins, 'FIFO_DIR'):
+
+    if not hasattr(builtins, "FIFO_DIR"):
         builtins.FIFO_DIR = "/tmp/actor"
         builtins.MAILBOX = queue.Queue()
         builtins.info_msg = actor.system.objects.info_msg
@@ -129,7 +130,7 @@ def sync_msg(pid, msg):
         if not MAILBOX.empty():
             r_msg = MAILBOX.get()
             if "ref" in r_msg.keys():
-                print(msg["ref"],':',r_msg["ref"])
+                print(msg["ref"], ":", r_msg["ref"])
                 if ref == r_msg["ref"]:
                     return r_msg
             MAILBOX.put(r_msg)

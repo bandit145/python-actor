@@ -65,9 +65,7 @@ class Harness:
                         if not self.thread.is_alive():
                             self.thread = threading.Thread(
                                 target=self.actor.__entrypoint__,
-                                args=(
-                                    copy.deepcopy(msg),
-                                ),
+                                args=(copy.deepcopy(msg),),
                                 daemon=True,
                             )
                             self.thread.start()
