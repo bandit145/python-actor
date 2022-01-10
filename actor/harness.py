@@ -53,12 +53,9 @@ class Harness:
                             link for links in self.links if link != msg["r_pid"]
                         ]
                         PROC_LOGGER.debug(f"HANDLER: current links {self.links}")
-                    case {
-                        "r_pid": _,
-                        "msg_type": actor.system.objects.RELOAD_MSG
-                    }:
+                    case {"r_pid": _, "msg_type": actor.system.objects.RELOAD_MSG}:
                         if not self.thread.is_alive():
-                            self.actor.reload(msg['r_pid'])
+                            self.actor.reload(msg["r_pid"])
                             self.module = importlib.reload(self.module)
                             self.actor = getattr(self.module, str(type(self.actor)))
                         else:
