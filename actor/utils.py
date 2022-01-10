@@ -74,6 +74,7 @@ def load_env(pid=None, log_level="INFO", log_file="/var/log/pyactor"):
         builtins.err_msg = actor.system.objects.err_msg
         builtins.link_msg = actor.system.objects.link_msg
         builtins.unlink_msg = actor.system.objects.unlink_msg
+        builtins.reload_msg = actor.system.objects.reload_msg
         if not pid:
             builtins.PID = actor.system.objects.Pid(int=uuid.uuid4().int)
         else:

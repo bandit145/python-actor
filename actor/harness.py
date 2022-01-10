@@ -57,7 +57,7 @@ class Harness:
                         if not self.thread.is_alive():
                             self.actor.reload(msg["r_pid"])
                             self.module = importlib.reload(self.module)
-                            self.actor = getattr(self.module, str(type(self.actor)))
+                            self.actor = getattr(self.module, self.actor.__class__.__name__)()
                         else:
                             MAILBOX.append(msg)
 

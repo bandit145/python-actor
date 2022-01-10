@@ -5,6 +5,7 @@ import json
 import pathlib
 import time
 import re
+import atexit
 
 actor.utils.load_env(None, "DEBUG")
 
@@ -31,13 +32,25 @@ def test_link():
 
 
 def test_code_reload():
-    pid = actor.utils.spawn("tests.unit.actors.EchoActor")
+    pid = actor.utils.spawn("tests.unit.actors.EchoActor", "debug")
+    # have to wait otherwise we rewrite the code too quickly causing the first asswert to fail
+    time.sleep(1)
     with open("tests/unit/actors.py", "r") as code_f:
         code = code_f.read()
     new_code = re.sub(
-        r'            info_msg(data=msg["data"], ref=ref) > pid',
-        r"            info_msg(reloaded=True, ref=ref) > pid",
+        r'            info_msg\(data=msg\["data"\], ref=ref\) > pid',
+        r"            info_msg(reloaded=True, ref=ref, data={}) > pid",
         code,
     )
-    print(new_code)
-    raise Exception
+    def restore_code(old_code):
+        with open("tests/unit/actors.py", "w") as f:
+            f.write(old_code)
+    atexit.register(restore_code, code)
+    with open("tests/unit/actors.py", "w") as f:
+            f.write(new_code)
+    msg = info_msg(data={}) >> pid
+    assert 'reloaded' not in msg.keys()
+    reload_msg() > pid
+    msg = info_msg(data={}) >> pid
+    assert msg['reloaded']
+    kill_msg() > pid
