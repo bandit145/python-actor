@@ -5,11 +5,13 @@ import actor.system.objects
 import os
 import sys
 import importlib
+import signal
 import threading
 import traceback
 import json
 import copy
 import atexit
+import time
 
 # How to do we extract the state safely from a hung thread?
 class Harness:
@@ -23,6 +25,7 @@ class Harness:
         # this is what we will use for our pids
         PROC_LOGGER.debug(f"HANDLER: {PID} started...")
         atexit.register(self.cleanup)
+        signal.signal(signal.SIGTERM, self.signal_kill)
         print(PID)
 
     def __loop__(self):
@@ -35,16 +38,22 @@ class Harness:
                 match msg := MAILBOX.get():
                     case {"r_pid": _, "msg_type": actor.system.objects.KILL_MSG}:
                         PROC_LOGGER.debug(
-                            f"HANDLER: recieved kill msg from {msg['r_pid']}. Going down!"
+                            f"HANDLER: received kill msg from {msg['r_pid']}. Going down!"
                         )
                         PROC_LOGGER.debug(
                             f"HANDLER: Actor state at shutdown {self.actor.state}"
                         )
+                        start = time.time()
+                        #might add a configurable timeout thing for this
+                        while time.time() - start < 60:
+                            if self.thread.is_alive():
+                                self.actor.__entrypoint__(msg)
                         sys.exit(0)
                     case {"r_pid": _, "msg_type": actor.system.objects.LINK_MSG}:
                         PROC_LOGGER.debug(f"HANDLER: linking {msg['r_pid']} to process")
                         if msg["r_pid"] not in self.links:
                             self.links.append(msg["r_pid"])
+                            link_msg() > msg['r_pid']
                     case {"r_pid": _, "msg_type": actor.system.objects.UNLINK_MSG}:
                         PROC_LOGGER.debug(
                             f"HANDLER: unlinking {msg['r_pid']} from process"
@@ -89,9 +98,12 @@ class Harness:
     def cleanup(self):
         self.notify_of_death()
 
+    def signal_kill(self, num, stck_frame):
+        sys.exit(0)
+
     def notify_of_death(self):
         for pid in self.links:
-            actor.system.objects.death_msg() > pid
+            death_msg() > pid
 
     def launch_actor(self, pkg, actor):
         self.module = importlib.import_module(pkg)
