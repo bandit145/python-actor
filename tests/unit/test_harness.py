@@ -42,15 +42,17 @@ def test_code_reload():
         r"            info_msg(reloaded=True, ref=ref, data={}) > pid",
         code,
     )
+
     def restore_code(old_code):
         with open("tests/unit/actors.py", "w") as f:
             f.write(old_code)
+
     atexit.register(restore_code, code)
     with open("tests/unit/actors.py", "w") as f:
-            f.write(new_code)
+        f.write(new_code)
     msg = info_msg(data={}) >> pid
-    assert 'reloaded' not in msg.keys()
+    assert "reloaded" not in msg.keys()
     reload_msg() > pid
     msg = info_msg(data={}) >> pid
-    assert msg['reloaded']
+    assert msg["reloaded"]
     kill_msg() > pid
