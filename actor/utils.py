@@ -9,6 +9,7 @@ import threading
 import logging
 import queue
 import traceback
+from actor.parsing import decode_object_hook, JSONEncoder
 
 
 def cleanup():
@@ -42,10 +43,7 @@ def recv_msg():
                         PROC_LOGGER.debug(
                             f"MSG PROCESSING LOOP: recieved message (raw) {data}"
                         )
-                        line = json.loads(line)
-                        line["r_pid"] = actor.system.objects.Pid(line["r_pid"])
-                        if line["ref"]:
-                            line["ref"] = actor.system.objects.Ref(line["ref"])
+                        line = json.loads(line, object_hook=decode_object_hook)
                         PROC_LOGGER.debug(
                             f"MSG PROCESSING LOOP: received message {line}"
                         )
@@ -107,26 +105,23 @@ def create_pipe():
 
 
 def __send_msg__(pid, msg):
+    msg["r_pid"] = PID
     if not os.path.exists(f"{FIFO_DIR}/{pid}.dwn") and os.path.exists(
         f"{FIFO_DIR}/{pid}"
     ):
         with open(f"{FIFO_DIR}/{pid}", "w") as fifo:
-            fifo.write(f"{json.dumps(msg)}\n")
+            fifo.write(f"{json.dumps(msg, cls=JSONEncoder)}\n")
 
 
 def async_msg(pid, msg):
-    msg["r_pid"] = str(PID)
     if "ref" not in msg.keys():
         msg["ref"] = None
-    else:
-        msg["ref"] = str(msg["ref"])
     __send_msg__(pid, msg)
 
 
 def sync_msg(pid, msg):
-    msg["r_pid"] = str(PID)
     ref = actor.system.objects.Ref(int=uuid.uuid4().int)
-    msg["ref"] = str(ref)
+    msg["ref"] = ref
     __send_msg__(pid, msg)
     # TODO, put this in the mailbox if it does not have a ref
     while True:

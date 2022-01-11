@@ -52,7 +52,6 @@ class msg(dict):
 
 
 class info_msg(msg):
-
     def __init__(self, **kwargs):
         kwargs["msg_type"] = INFO_MSG
         super().__init__(**kwargs)

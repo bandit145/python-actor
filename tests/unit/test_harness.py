@@ -25,6 +25,10 @@ def test_launch_harness():
 
 def test_link():
     pid = actor.utils.link("actor.actors.EchoActor", "debug")
+    msg = MAILBOX.get(block=True)
+    #A link is a two way linking therefore our process will receive a link message when our request to link is
+    # received by the other process.
+    assert msg["msg_type"] == actor.system.objects.LINK_MSG
     kill_msg() > pid
     msg = MAILBOX.get(block=True)
     assert msg["msg_type"] == actor.system.objects.DEATH_MSG
@@ -42,15 +46,17 @@ def test_code_reload():
         r"            info_msg(reloaded=True, ref=ref, data={}) > pid",
         code,
     )
+
     def restore_code(old_code):
         with open("tests/unit/actors.py", "w") as f:
             f.write(old_code)
+
     atexit.register(restore_code, code)
     with open("tests/unit/actors.py", "w") as f:
-            f.write(new_code)
+        f.write(new_code)
     msg = info_msg(data={}) >> pid
-    assert 'reloaded' not in msg.keys()
+    assert "reloaded" not in msg.keys()
     reload_msg() > pid
     msg = info_msg(data={}) >> pid
-    assert msg['reloaded']
+    assert msg["reloaded"]
     kill_msg() > pid

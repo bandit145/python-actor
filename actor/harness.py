@@ -44,7 +44,7 @@ class Harness:
                             f"HANDLER: Actor state at shutdown {self.actor.state}"
                         )
                         start = time.time()
-                        #might add a configurable timeout thing for this
+                        # might add a configurable timeout thing for this
                         while time.time() - start < 60:
                             if self.thread.is_alive():
                                 self.actor.__entrypoint__(msg)
@@ -53,7 +53,7 @@ class Harness:
                         PROC_LOGGER.debug(f"HANDLER: linking {msg['r_pid']} to process")
                         if msg["r_pid"] not in self.links:
                             self.links.append(msg["r_pid"])
-                            link_msg() > msg['r_pid']
+                            link_msg() > msg["r_pid"]
                     case {"r_pid": _, "msg_type": actor.system.objects.UNLINK_MSG}:
                         PROC_LOGGER.debug(
                             f"HANDLER: unlinking {msg['r_pid']} from process"
@@ -66,7 +66,9 @@ class Harness:
                         if not self.thread.is_alive():
                             self.actor.reload(msg["r_pid"])
                             self.module = importlib.reload(self.module)
-                            self.actor = getattr(self.module, self.actor.__class__.__name__)()
+                            self.actor = getattr(
+                                self.module, self.actor.__class__.__name__
+                            )()
                         else:
                             MAILBOX.append(msg)
 
