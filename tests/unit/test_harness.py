@@ -25,6 +25,10 @@ def test_launch_harness():
 
 def test_link():
     pid = actor.utils.link("actor.actors.EchoActor", "debug")
+    msg = MAILBOX.get(block=True)
+    #A link is a two way linking therefore our process will receive a link message when our request to link is
+    # received by the other process.
+    assert msg["msg_type"] == actor.system.objects.LINK_MSG
     kill_msg() > pid
     msg = MAILBOX.get(block=True)
     assert msg["msg_type"] == actor.system.objects.DEATH_MSG
