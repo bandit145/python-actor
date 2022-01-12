@@ -7,7 +7,7 @@ class EchoActor(Actor):
     def start(self):
         print("test")
 
-    def info_msg(self, pid, ref, msg):
+    def info(self, pid, ref, msg):
         self.state["msg_cnt"] += 1
         if ref:
             info_msg(data=msg["data"], ref=ref) > pid

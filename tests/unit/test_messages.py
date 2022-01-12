@@ -18,7 +18,8 @@ def test_many_messages():
     while sum([x for x in msgs_recvd.values()]) < msg_amnt:
         try:
             msg = MAILBOX.get(block=False)
-            msgs_recvd[msg["r_pid"]] += 1
+            if msg['r_pid'] in msgs_recvd:
+                msgs_recvd[msg["r_pid"]] += 1
         except queue.Empty:
             pass
     assert sum([x for x in msgs_recvd.values()]) == msg_amnt

@@ -3,6 +3,7 @@ import actor.utils
 import actor.system.objects
 import json
 import pathlib
+import queue
 import time
 import re
 import atexit
@@ -13,7 +14,7 @@ actor.utils.load_env(None, "DEBUG")
 def test_launch_harness():
     print(PID)
     tst_msg = info_msg(data={})
-    pid = actor.utils.spawn("actor.actors.EchoActor", "debug")
+    pid = spawn("actor.actors.EchoActor", "debug")
     data = tst_msg >> pid
     # del data["ref"]
     assert PID != data["r_pid"]
@@ -24,19 +25,33 @@ def test_launch_harness():
 
 
 def test_link():
-    pid = actor.utils.link("actor.actors.EchoActor", "debug")
-    msg = MAILBOX.get(block=True)
+    pid = link("actor.actors.EchoActor", "debug")
     #A link is a two way linking therefore our process will receive a link message when our request to link is
     # received by the other process.
+    start = time.time()
+    while time.time() - start < 10:
+        try:
+            msg = MAILBOX.get(block=False)
+            if msg['r_pid'] == pid:
+                break
+        except queue.Empty:
+            pass
     assert msg["msg_type"] == actor.system.objects.LINK_MSG
     kill_msg() > pid
-    msg = MAILBOX.get(block=True)
+    start = time.time()
+    while time.time() - start < 10:
+        try:
+            msg = MAILBOX.get(block=False)
+            if msg['r_pid'] == pid:
+                break
+        except queue.Empty:
+            pass
     assert msg["msg_type"] == actor.system.objects.DEATH_MSG
     assert MAILBOX.empty()
 
 
 def test_code_reload():
-    pid = actor.utils.spawn("tests.unit.actors.EchoActor", "debug")
+    pid = spawn("tests.unit.actors.EchoActor", "debug")
     # have to wait otherwise we rewrite the code too quickly causing the first asswert to fail
     time.sleep(1)
     with open("tests/unit/actors.py", "r") as code_f:
@@ -52,10 +67,10 @@ def test_code_reload():
             f.write(old_code)
 
     atexit.register(restore_code, code)
-    with open("tests/unit/actors.py", "w") as f:
-        f.write(new_code)
     msg = info_msg(data={}) >> pid
     assert "reloaded" not in msg.keys()
+    with open("tests/unit/actors.py", "w") as f:
+        f.write(new_code)
     reload_msg() > pid
     msg = info_msg(data={}) >> pid
     assert msg["reloaded"]

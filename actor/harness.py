@@ -23,7 +23,6 @@ class Harness:
 
     def __init__(self, pid):
         # this is what we will use for our pids
-        PROC_LOGGER.debug(f"HANDLER: {PID} started...")
         atexit.register(self.cleanup)
         signal.signal(signal.SIGTERM, self.signal_kill)
         print(PID)
@@ -46,14 +45,15 @@ class Harness:
                         start = time.time()
                         # might add a configurable timeout thing for this
                         while time.time() - start < 60:
-                            if self.thread.is_alive():
+                            if not self.thread.is_alive():
                                 self.actor.__entrypoint__(msg)
+                                break
                         sys.exit(0)
                     case {"r_pid": _, "msg_type": actor.system.objects.LINK_MSG}:
                         PROC_LOGGER.debug(f"HANDLER: linking {msg['r_pid']} to process")
                         if msg["r_pid"] not in self.links:
                             self.links.append(msg["r_pid"])
-                            link_msg() > msg["r_pid"]
+                            link_msg(ref=msg['ref']) > msg["r_pid"]
                     case {"r_pid": _, "msg_type": actor.system.objects.UNLINK_MSG}:
                         PROC_LOGGER.debug(
                             f"HANDLER: unlinking {msg['r_pid']} from process"
@@ -70,12 +70,11 @@ class Harness:
                                 self.module, self.actor.__class__.__name__
                             )()
                         else:
-                            MAILBOX.append(msg)
+                            MAILBOX.put(msg)
 
                     case {
                         "r_pid": _,
                         "msg_type": _,
-                        "data": _,
                         "ref": _,
                     }:
                         # we cannot have this getting modified when we loop to another
@@ -90,7 +89,7 @@ class Harness:
                             )
                             self.thread.start()
                         else:
-                            MAILBOX.append(msg)
+                            MAILBOX.put(msg)
                     case {"r_pid": _}:
                         PROC_LOGGER.debug(f"HANDLER: unknown message received. {msg}")
                         actor.system.objects.msg(msg_type=actor.system.objects.ERR_MSG)
@@ -105,11 +104,12 @@ class Harness:
 
     def notify_of_death(self):
         for pid in self.links:
-            death_msg() > pid
+            death_msg(type=f"{self.module.__name__}.{self.actor.__class__.__name__}") > pid
 
     def launch_actor(self, pkg, actor):
         self.module = importlib.import_module(pkg)
         self.actor = getattr(self.module, actor)()
+        PROC_LOGGER.debug(f"HANDLER: {PID} of type {self.module.__name__}.{self.actor.__class__.__name__} started...")
         while True:
             try:
                 self.__loop__()

@@ -128,7 +128,6 @@ def sync_msg(pid, msg):
         if not MAILBOX.empty():
             r_msg = MAILBOX.get()
             if "ref" in r_msg.keys():
-                print(msg["ref"], ":", r_msg["ref"])
                 if ref == r_msg["ref"]:
                     return r_msg
             MAILBOX.put(r_msg)
