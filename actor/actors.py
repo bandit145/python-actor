@@ -58,8 +58,8 @@ class Supervisor(Actor):
     state = {"processes": {}}
 
     def kill(self, pid):
-        for _, v in  self.state["processes"].items():
-            for p in v['pids']:
+        for _, v in self.state["processes"].items():
+            for p in v["pids"]:
                 PROC_LOGGER.debug(f"SUPERVISOR: going down and terminating {p}")
                 kill_msg() > p
 
@@ -67,19 +67,23 @@ class Supervisor(Actor):
         match msg:
             case {"data": {"spawn": _}}:
                 if msg["data"]["spawn"] not in self.state["processes"]:
-                    if 'log_level' in msg['data']:
-                        log_level = msg['data']['log_level']
+                    if "log_level" in msg["data"]:
+                        log_level = msg["data"]["log_level"]
                     else:
-                        log_level = 'info'
+                        log_level = "info"
                     pids = [
-                        link(msg["data"]["spawn"], log_level) for x in range(0, msg["data"]["desired"])
+                        link(msg["data"]["spawn"], log_level)
+                        for x in range(0, msg["data"]["desired"])
                     ]
                     self.state["processes"][msg["data"]["spawn"]] = {
                         "pids": pids,
                         "desired": msg["data"]["desired"],
-                        "log_level": log_level
+                        "log_level": log_level,
                     }
-                elif self.state["processes"][msg["data"]["spawn"]]["desired"] != msg["data"]["desired"]:
+                elif (
+                    self.state["processes"][msg["data"]["spawn"]]["desired"]
+                    != msg["data"]["desired"]
+                ):
                     desired = msg["data"]["desired"]
                     spawn = msg["data"]["spawn"]
                     if self.state["processes"][spawn]["desired"] > desired:
@@ -97,9 +101,20 @@ class Supervisor(Actor):
                         PROC_LOGGER.debug(f"SUPERVISOR: increasing {spawn} by {num}")
                         self.state["processes"][spawn]["desired"] = desired
                         [
-                            self.state["processes"][spawn]['pids'].append(link(spawn, self.state['processes'][spawn]['log_level']))
+                            self.state["processes"][spawn]["pids"].append(
+                                link(spawn, self.state["processes"][spawn]["log_level"])
+                            )
                             for x in range(0, num)
                         ]
+                elif self.state["processes"][msg["data"]["spawn"]]["desired"] > len(self.state["processes"][msg["data"]["spawn"]]["pids"]):
+                    spawn = msg["data"]["spawn"]
+                    num = self.state["processes"][msg["data"]["spawn"]]["desired"] - len(self.state["processes"][msg["data"]["spawn"]]["pids"])
+                    [
+                        self.state["processes"][spawn]["pids"].append(
+                            link(spawn, self.state["processes"][spawn]["log_level"])
+                        )
+                        for x in range(0, num)
+                    ]
 
                 else:
                     info_msg(
@@ -107,19 +122,19 @@ class Supervisor(Actor):
                     ) > pid
 
     def death(self, pid, ref, msg):
-        self.state['processes'][msg['type']]['pids'] = [
-            x for x in self.state["processes"][msg['type']]["pids"] if x != pid
+        self.state["processes"][msg["type"]]["pids"] = [
+            x for x in self.state["processes"][msg["type"]]["pids"] if x != pid
         ]
         if (
-            len(self.state["processes"][msg['type']]["pids"])
-            < self.state["processes"][msg['type']]["desired"]
+            len(self.state["processes"][msg["type"]]["pids"])
+            < self.state["processes"][msg["type"]]["desired"]
         ):
-            std_msg(data=dict(reload=msg['type'])) > PID
+            std_msg(data=dict(spawn=msg['type'], desired=self.state["processes"][msg["type"]]["desired"])) > PID
 
     def info(self, pid, ref, msg):
         match msg:
             case {"dump_state": _}:
-                PROC_LOGGER.debug(f'SUPERVISOR: dumping state to {pid}\n{msg}')
+                PROC_LOGGER.debug(f"SUPERVISOR: dumping state to {pid}\n{msg}")
                 info_msg(state=self.state, ref=ref) > pid
 
 

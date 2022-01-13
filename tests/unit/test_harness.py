@@ -26,13 +26,13 @@ def test_launch_harness():
 
 def test_link():
     pid = link("actor.actors.EchoActor", "debug")
-    #A link is a two way linking therefore our process will receive a link message when our request to link is
+    # A link is a two way linking therefore our process will receive a link message when our request to link is
     # received by the other process.
     start = time.time()
     while time.time() - start < 10:
         try:
             msg = MAILBOX.get(block=False)
-            if msg['r_pid'] == pid:
+            if msg["r_pid"] == pid:
                 break
         except queue.Empty:
             pass
@@ -42,7 +42,7 @@ def test_link():
     while time.time() - start < 10:
         try:
             msg = MAILBOX.get(block=False)
-            if msg['r_pid'] == pid:
+            if msg["r_pid"] == pid:
                 break
         except queue.Empty:
             pass

@@ -53,7 +53,7 @@ class Harness:
                         PROC_LOGGER.debug(f"HANDLER: linking {msg['r_pid']} to process")
                         if msg["r_pid"] not in self.links:
                             self.links.append(msg["r_pid"])
-                            link_msg(ref=msg['ref']) > msg["r_pid"]
+                            link_msg(ref=msg["ref"]) > msg["r_pid"]
                     case {"r_pid": _, "msg_type": actor.system.objects.UNLINK_MSG}:
                         PROC_LOGGER.debug(
                             f"HANDLER: unlinking {msg['r_pid']} from process"
@@ -104,12 +104,16 @@ class Harness:
 
     def notify_of_death(self):
         for pid in self.links:
-            death_msg(type=f"{self.module.__name__}.{self.actor.__class__.__name__}") > pid
+            death_msg(
+                type=f"{self.module.__name__}.{self.actor.__class__.__name__}"
+            ) > pid
 
     def launch_actor(self, pkg, actor):
         self.module = importlib.import_module(pkg)
         self.actor = getattr(self.module, actor)()
-        PROC_LOGGER.debug(f"HANDLER: {PID} of type {self.module.__name__}.{self.actor.__class__.__name__} started...")
+        PROC_LOGGER.debug(
+            f"HANDLER: {PID} of type {self.module.__name__}.{self.actor.__class__.__name__} started..."
+        )
         while True:
             try:
                 self.__loop__()
