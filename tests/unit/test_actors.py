@@ -44,11 +44,14 @@ def test_supervisor_scale():
             PROC_LOGGER.debug(f"pid list state {pids}")
     kill_msg() > pid
 
+
 def test_supervisor_reload():
     pid = spawn("actor.actors.Supervisor", "debug")
-    std_msg(data=dict(spawn="actor.actors.EchoActor", desired=3, log_level="debug")) > pid
+    std_msg(
+        data=dict(spawn="actor.actors.EchoActor", desired=3, log_level="debug")
+    ) > pid
     sup_state = info_msg(dump_state=True) >> pid
-    dead_pid = sup_state['state']['processes']['actor.actors.EchoActor']['pids'][2]
+    dead_pid = sup_state["state"]["processes"]["actor.actors.EchoActor"]["pids"][2]
     link_msg() >> dead_pid
     kill_msg() > dead_pid
     start = time.time()
@@ -61,8 +64,17 @@ def test_supervisor_reload():
             pass
     start = time.time()
     new_sup_state = info_msg(dump_state=True) >> pid
-    while not len(new_sup_state['state']['processes']['actor.actors.EchoActor']['pids']) == 3 or time.time() - start < 10:
+    while (
+        not len(new_sup_state["state"]["processes"]["actor.actors.EchoActor"]["pids"])
+        == 3
+        or time.time() - start < 10
+    ):
         new_sup_state = info_msg(dump_state=True) >> pid
-    assert len(new_sup_state['state']['processes']['actor.actors.EchoActor']['pids']) == 3
-    assert dead_pid not in new_sup_state['state']['processes']['actor.actors.EchoActor']['pids']
+    assert (
+        len(new_sup_state["state"]["processes"]["actor.actors.EchoActor"]["pids"]) == 3
+    )
+    assert (
+        dead_pid
+        not in new_sup_state["state"]["processes"]["actor.actors.EchoActor"]["pids"]
+    )
     kill_msg() > pid

@@ -54,7 +54,7 @@ class Actor:
 
 
 class Supervisor(Actor):
-    # {type: {pids: [], desired: int, active: int}}
+    # {type: {pids: [], desired: int}}
     state = {"processes": {}}
 
     def kill(self, pid):
@@ -106,9 +106,13 @@ class Supervisor(Actor):
                             )
                             for x in range(0, num)
                         ]
-                elif self.state["processes"][msg["data"]["spawn"]]["desired"] > len(self.state["processes"][msg["data"]["spawn"]]["pids"]):
+                elif self.state["processes"][msg["data"]["spawn"]]["desired"] > len(
+                    self.state["processes"][msg["data"]["spawn"]]["pids"]
+                ):
                     spawn = msg["data"]["spawn"]
-                    num = self.state["processes"][msg["data"]["spawn"]]["desired"] - len(self.state["processes"][msg["data"]["spawn"]]["pids"])
+                    num = self.state["processes"][msg["data"]["spawn"]][
+                        "desired"
+                    ] - len(self.state["processes"][msg["data"]["spawn"]]["pids"])
                     [
                         self.state["processes"][spawn]["pids"].append(
                             link(spawn, self.state["processes"][spawn]["log_level"])
@@ -129,7 +133,12 @@ class Supervisor(Actor):
             len(self.state["processes"][msg["type"]]["pids"])
             < self.state["processes"][msg["type"]]["desired"]
         ):
-            std_msg(data=dict(spawn=msg['type'], desired=self.state["processes"][msg["type"]]["desired"])) > PID
+            std_msg(
+                data=dict(
+                    spawn=msg["type"],
+                    desired=self.state["processes"][msg["type"]]["desired"],
+                )
+            ) > PID
 
     def info(self, pid, ref, msg):
         match msg:
