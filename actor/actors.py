@@ -10,7 +10,7 @@ class Actor:
     def __init__(self):
         pass
 
-    def __entrypoint__(self, msg):
+    def __entrypoint__(self, msg: actor.system.objects.MSG) -> None:
         try:
             match msg:
                 case {
@@ -31,25 +31,25 @@ class Actor:
         except Exception:
             PROC_LOGGER.debug(f"ACTOR: UNCAUGHT ERROR:\n{traceback.format_exc()}")
 
-    def start(self):
+    def start(self) -> None:
         pass
 
-    def std(self, pid, ref, msg):
+    def std(self, pid: actor.system.objects.Pid, ref: actor.system.objects.Ref, msg: actor.system.objects.Msg) -> None:
         pass
 
-    def reload(self, pid):
+    def reload(self, pid: actor.system.objects.Pid) -> None:
         pass
 
-    def death(self, pid, ref, msg):
+    def death(self, pid: actor.system.objects.Pid, ref: actor.system.objects.Ref, msg: actor.system.objects.Msg) -> None:
         pass
 
-    def info(self, pid, ref, msg):
+    def info(self, pid: actor.system.objects.Pid, ref: actor.system.objects.Ref, msg: actor.system.objects.Msg) -> None:
         pass
 
-    def error(self, pid, traceback, exec):
+    def error(self, pid: actor.system.objects.Pid, traceback: str, exec: Exception) -> None:
         pass
 
-    def kill(self, pid):
+    def kill(self, pid: actor.system.objects.Pid) -> None:
         pass
 
 
@@ -57,13 +57,13 @@ class Supervisor(Actor):
     # {type: {pids: [], desired: int}}
     state = {"processes": {}}
 
-    def kill(self, pid):
+    def kill(self, pid: actor.system.objects.Pid) -> None:
         for _, v in self.state["processes"].items():
             for p in v["pids"]:
                 PROC_LOGGER.debug(f"SUPERVISOR: going down and terminating {p}")
                 kill_msg() > p
 
-    def std(self, pid, ref, msg):
+    def std(self, pid: actor.system.objects.Pid, ref: actor.system.objects.Ref, msg: actor.system.objects.Msg) -> None:
         match msg:
             case {"data": {"spawn": _}}:
                 if msg["data"]["spawn"] not in self.state["processes"]:
@@ -125,7 +125,7 @@ class Supervisor(Actor):
                         data={"info": "Supervisor already has requested state"}, ref=ref
                     ) > pid
 
-    def death(self, pid, ref, msg):
+    def death(self, pid: actor.system.objects.Pid, ref: actor.system.objects.Ref, msg: actor.system.objects.Msg) -> None:
         self.state["processes"][msg["type"]]["pids"] = [
             x for x in self.state["processes"][msg["type"]]["pids"] if x != pid
         ]
@@ -140,7 +140,7 @@ class Supervisor(Actor):
                 )
             ) > PID
 
-    def info(self, pid, ref, msg):
+    def info(self, pid: actor.system.objects.Pid, ref: actor.system.objects.Ref, msg: actor.system.objects.Msg) -> None:
         match msg:
             case {"dump_state": _}:
                 PROC_LOGGER.debug(f"SUPERVISOR: dumping state to {pid}\n{msg}")
@@ -153,10 +153,10 @@ class Supervisor(Actor):
 class EchoActor(Actor):
     state = {"msg_cnt": 0}
 
-    def start(self):
+    def start(self) -> None:
         print("test")
 
-    def info(self, pid, ref, msg):
+    def info(self, pid: actor.system.objects.Pid, ref: actor.system.objects.Ref, msg: actor.system.objects.Msg) -> None:
         self.state["msg_cnt"] += 1
         if ref:
             info_msg(data=msg["data"], ref=ref) > pid
@@ -165,7 +165,7 @@ class EchoActor(Actor):
 class SpamActor(Actor):
     state = {"msg_cnt": 500}
 
-    def std(self, pid, ref, msg):
+    def std(self, pid: actor.system.objects.Pid, ref: actor.system.objects.Ref, msg: actor.system.objects.Msg) -> None:
         if "begin" in msg["data"].keys():
             while self.state["msg_cnt"] > 0:
                 std_msg(data={"spam_msg": True}) > pid
