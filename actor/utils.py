@@ -9,7 +9,9 @@ import threading
 import logging
 import queue
 import traceback
+import time
 from actor.parsing import decode_object_hook, JSONEncoder
+from actor.system.exceptions import SpawnException
 
 
 def cleanup():
@@ -148,10 +150,18 @@ def spawn(actor_obj, log_level="info"):
             str(n_pid),
             "--log_level",
             log_level,
-        ]
+        ],
+        stdout = subprocess.PIPE,
+        stderr = subprocess.STDOUT
     )
+    start = time.time()
     while not os.path.exists(f"{FIFO_DIR}/{n_pid}"):
-        pass
+        if time.time() - start > 5:
+            raise SpawnException()
+    proc.poll()
+    if proc.returncode:
+        out, _ = proc.communicate()
+        raise SpawnException(f"{n_pid} died.\n{out}")
     PROC_LOGGER.debug(f"SPAWN: {PID} spawned {n_pid}")
     return n_pid
 
