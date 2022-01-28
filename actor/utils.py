@@ -166,9 +166,11 @@ def spawn(actor_obj, log_level="info"):
     PROC_LOGGER.debug(f"SPAWN: {PID} spawned {n_pid}")
     return n_pid
 
+
 def pop_mailbox():
     if not MAILBOX.empty():
         return MAILBOX.get()
+
 
 def link(actor_obj, log_level="info"):
     pid = spawn(actor_obj, log_level)
