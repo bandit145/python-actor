@@ -77,6 +77,7 @@ def load_env(pid=None, log_level="INFO", log_file="/var/log/pyactor"):
         builtins.reload_msg = actor.system.objects.reload_msg
         builtins.spawn = spawn
         builtins.link = link
+        builtins.pop_mailbox = pop_mailbox
         if not pid:
             builtins.PID = actor.system.objects.Pid(int=uuid.uuid4().int)
         else:
@@ -151,13 +152,13 @@ def spawn(actor_obj, log_level="info"):
             "--log_level",
             log_level,
         ],
-        stdout = subprocess.PIPE,
-        stderr = subprocess.STDOUT
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     start = time.time()
     while not os.path.exists(f"{FIFO_DIR}/{n_pid}"):
         if time.time() - start > 5:
-            raise SpawnException()
+            break
     proc.poll()
     if proc.returncode:
         out, _ = proc.communicate()
@@ -165,6 +166,9 @@ def spawn(actor_obj, log_level="info"):
     PROC_LOGGER.debug(f"SPAWN: {PID} spawned {n_pid}")
     return n_pid
 
+def pop_mailbox():
+    if not MAILBOX.empty():
+        return MAILBOX.get()
 
 def link(actor_obj, log_level="info"):
     pid = spawn(actor_obj, log_level)

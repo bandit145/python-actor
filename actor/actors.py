@@ -92,10 +92,6 @@ class Supervisor(Actor):
                         PROC_LOGGER.debug(f"SUPERVISOR: reducing {spawn} by {num}")
                         for p in self.state["processes"][spawn]["pids"][:num]:
                             kill_msg() > p
-                        # map(
-                        #     lambda p: kill_msg() > p,
-                        #     self.state["processes"][spawn]["pids"][:num],
-                        # )
                     else:
                         num = desired - self.state["processes"][spawn]["desired"]
                         PROC_LOGGER.debug(f"SUPERVISOR: increasing {spawn} by {num}")
@@ -156,10 +152,19 @@ class EchoActor(Actor):
     def start(self):
         print("test")
 
+    def std(self, pid, ref, msg):
+        self.state["msg_cnt"] += 1
+        if ref:
+            std_msg(data=msg["data"], ref=ref) > pid
+        else:
+            std_msg(data=msg["data"]) > pid
+
     def info(self, pid, ref, msg):
         self.state["msg_cnt"] += 1
         if ref:
             info_msg(data=msg["data"], ref=ref) > pid
+        else:
+            info_msg(data=msg["data"]) > pid
 
 
 class SpamActor(Actor):
