@@ -8,3 +8,7 @@ class InvalidMessage(PyActorException):
 
 class ErrorException(PyActorException):
     pass
+
+
+class SpawnException(PyActorException):
+    pass
