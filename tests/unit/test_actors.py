@@ -1,7 +1,9 @@
 from actor.actors import Supervisor
+import actor.system.objects
 import actor.utils
 import time
 import queue
+import logging
 
 actor.utils.load_env(None, "DEBUG")
 
@@ -38,7 +40,7 @@ def test_supervisor_scale():
     std_msg(data=dict(spawn="actor.actors.EchoActor", desired=1)) > pid
     while len(pids) != 1:
         msg = MAILBOX.get()
-        if msg["msg_type"] == "death_msg":
+        if msg["msg_type"] == actor.system.objects.DEATH_MSG:
             assert msg["r_pid"] in pids
             pids = [x for x in pids if msg["r_pid"] != x]
             PROC_LOGGER.debug(f"pid list state {pids}")
@@ -58,7 +60,7 @@ def test_supervisor_reload():
     while time.time() - start < 10:
         try:
             msg = MAILBOX.get(block=False)
-            if msg["r_pid"] == dead_pid and msg["msg_type"] == "death_msg":
+            if msg["r_pid"] == dead_pid and msg["msg_type"] == actor.system.objects.DEATH_MSG:
                 break
         except queue.Empty:
             pass

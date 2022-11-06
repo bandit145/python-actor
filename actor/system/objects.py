@@ -3,16 +3,15 @@ import actor.utils
 from actor.system.exceptions import InvalidMessage
 import copy
 
-INFO_MSG = "info_msg"
-STD_MSG = "std_msg"
-KILL_MSG = "kill_msg"
-DEATH_MSG = "death_msg"
-UP_MSG = "up_msg"
-ERR_MSG = "err_msg"
-LINK_MSG = "link_msg"
-UNLINK_MSG = "unlink_msg"
-RELOAD_MSG = "reload_msg"
-
+INFO_MSG = 0
+STD_MSG = 1
+KILL_MSG = 2
+DEATH_MSG = 3
+UP_MSG = 4
+ERR_MSG = 5
+LINK_MSG = 6
+UNLINK_MSG = 7
+RELOAD_MSG = 8
 
 class Pid(UUID):
     def __repr__(self):
@@ -29,7 +28,7 @@ class msg(dict):
 
     def __init__(self, *args, **kwargs):
         if self.__required_format__ != {}:
-            self.__required_format__["msg_type"] = str
+            self.__required_format__["msg_type"] = int
             keys = kwargs.keys()
             for k, v in self.__required_format__.items():
                 if k not in keys:
@@ -107,3 +106,16 @@ class reload_msg(msg):
     def __init__(self, **kwargs):
         kwargs["msg_type"] = RELOAD_MSG
         super().__init__(**kwargs)
+
+
+ID_MSG_MAP = {
+    0: info_msg,
+    1: std_msg,
+    2: kill_msg,
+    3: death_msg,
+    4: up_msg,
+    5: err_msg,
+    6: link_msg,
+    7: unlink_msg,
+    8: reload_msg
+}

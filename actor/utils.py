@@ -50,7 +50,7 @@ def recv_msg():
                             f"MSG PROCESSING LOOP: received message {line}"
                         )
                         MAILBOX.put(
-                            getattr(actor.system.objects, line["msg_type"])(**line)
+                            actor.system.objects.ID_MSG_MAP[line["msg_type"]](**line)
                         )
                 except json.JSONDecodeError:
                     PROC_LOGGER.error(f"MSG PROCESSING LOOP: could not decode {line}")
