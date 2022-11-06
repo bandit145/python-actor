@@ -55,12 +55,8 @@ class Harness:
                         self.links.append(msg["r_pid"])
                         link_msg(ref=msg["ref"]) > msg["r_pid"]
                 case {"r_pid": _, "msg_type": actor.system.objects.UNLINK_MSG}:
-                    PROC_LOGGER.debug(
-                        f"HANDLER: unlinking {msg['r_pid']} from process"
-                    )
-                    self.links = [
-                        link for links in self.links if link != msg["r_pid"]
-                    ]
+                    PROC_LOGGER.debug(f"HANDLER: unlinking {msg['r_pid']} from process")
+                    self.links = [link for links in self.links if link != msg["r_pid"]]
                     PROC_LOGGER.debug(f"HANDLER: current links {self.links}")
                 case {"r_pid": _, "msg_type": actor.system.objects.RELOAD_MSG}:
                     if not self.thread.is_alive():
