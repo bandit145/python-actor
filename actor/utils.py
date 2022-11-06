@@ -64,7 +64,7 @@ def load_env(pid=None, log_level="INFO", log_file="/var/log/pyactor"):
     import builtins
 
     if not hasattr(builtins, "FIFO_DIR"):
-        builtins.FIFO_DIR = "/tmp/actor"
+        builtins.FIFO_DIR = "/var/run/actor"
         builtins.MAILBOX = queue.Queue()
         builtins.info_msg = actor.system.objects.info_msg
         builtins.std_msg = actor.system.objects.std_msg

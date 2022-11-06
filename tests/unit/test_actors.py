@@ -60,7 +60,10 @@ def test_supervisor_reload():
     while time.time() - start < 10:
         try:
             msg = MAILBOX.get(block=False)
-            if msg["r_pid"] == dead_pid and msg["msg_type"] == actor.system.objects.DEATH_MSG:
+            if (
+                msg["r_pid"] == dead_pid
+                and msg["msg_type"] == actor.system.objects.DEATH_MSG
+            ):
                 break
         except queue.Empty:
             pass

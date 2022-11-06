@@ -13,6 +13,7 @@ LINK_MSG = 6
 UNLINK_MSG = 7
 RELOAD_MSG = 8
 
+
 class Pid(UUID):
     def __repr__(self):
         return f"Pid('{self.__str__()}')"
@@ -117,5 +118,5 @@ ID_MSG_MAP = {
     5: err_msg,
     6: link_msg,
     7: unlink_msg,
-    8: reload_msg
+    8: reload_msg,
 }

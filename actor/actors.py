@@ -142,7 +142,6 @@ class Supervisor(Actor):
                 PROC_LOGGER.debug(f"SUPERVISOR: dumping state to {pid}\n{msg}")
                 info_msg(state=self.state, ref=ref) > pid
 
-
 # Actors for testing purposes
 
 
