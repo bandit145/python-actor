@@ -13,6 +13,7 @@ import copy
 import atexit
 import time
 
+
 # How to do we extract the state safely from a hung thread?
 class Harness:
     links = []
